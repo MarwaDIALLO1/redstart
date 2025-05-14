@@ -248,13 +248,13 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    mo.center(mo.image(src="public/images/images (14).png"))
+    mo.center(mo.image(src="public/images/image (14).png"))
     return
 
 
 @app.cell
 def _(mo):
-    mo.center(mo.image(src="public/images/images (15).png"))
+    mo.center(mo.image(src="public/images/image (15).png"))
     return
 
 
