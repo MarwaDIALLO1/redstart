@@ -74,6 +74,13 @@ def _():
     return FFMpegWriter, FuncAnimation, np, plt, solve_ivp, tqdm
 
 
+@app.cell
+def _():
+    from matplotlib.patches import Rectangle, Polygon
+    import matplotlib.transforms as transforms
+    return Polygon, Rectangle, transforms
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -235,23 +242,20 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    mo.center(mo.image(src="public\WhatsApp Image 2025-05-14 at 13.09.31_9f99fe81.jpg.jpeg"))
+    mo.center(mo.image(src="public/images/images (13).png"))
     return
 
 
 @app.cell
 def _(mo):
-    mo.center(mo.image(src="public\WhatsApp Image 2025-05-14 at 12.11.47_2d9ef0c4.jpg.jpeg"))
-
+    mo.center(mo.image(src="public/images/images (14).png"))
     return
 
 
-app._unparsable_cell(
-    r"""
-    mo.center(mo.image(src=\"public\WhatsApp Image 2025-05-14 at 13.09.53_b4527e3f.jpg.jpeg\"))&
-    """,
-    name="_"
-)
+@app.cell
+def _(mo):
+    mo.center(mo.image(src="public/images/images (15).png"))
+    return
 
 
 @app.cell
@@ -335,12 +339,12 @@ def _(mo):
     $$
 
 
-    Substituting and using \( M = 1 \) and \( g = 1 \), we obtain the ordinary differential equations (ODEs) that govern the position \( (x(t), y(t)) \) of the center of mass.:
+    We obtain the ordinary differential equations (ODEs) that govern the position \( (x(t), y(t)) \) of the center of mass.:
 
     $$
     \begin{cases}
-    \ddot{x}(t) = - f \cdot \sin (\theta + \varphi) \\
-    \ddot{y}(t) = f \cdot \cos(\theta + \varphi) - 1
+    \ddot{x}(t) = - \frac{f}{M} \cdot \sin (\theta + \varphi) \\
+    \ddot{y}(t) = \frac{f}{M} \cdot \cos(\theta + \varphi) - g
     \end{cases}
     $$
     """
@@ -364,9 +368,6 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-
-
-
     \[
     J = J_{\text{center}} + m d^2
     \]
@@ -380,7 +381,6 @@ def _(mo):
     \[
     J_{\text{center}} = \frac{1}{12} M (2l)^2 = \frac{1}{3} M l^2
     \]
-
     """
     )
     return
@@ -408,8 +408,6 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-
-
     According to the moments theorem :
 
     $$\sum \tau = I\ddot{\theta}$$
@@ -425,20 +423,20 @@ def _(mo):
 
     1. **Gravitational Force Torque**: 
        Since gravity acts at the center of mass, its moment arm for rotation about the center is zero. However, if we consider the effect of gravity when the booster is tilted, we need to analyze the effective moment.
-   
+
        When the booster is tilted at angle $\theta$, the center of mass is displaced from the vertical axis. The gravitational force creates a torque that tries to restore the vertical position.
-   
+
        The moment arm for this torque is $\ell\sin\theta$, and the torque is:
        $$\tau_g = -Mg\ell\sin\theta$$
-   
+
        The negative sign indicates that this torque opposes an increase in $\theta$.
 
     2. **Reactor Force Torque**:
 
-   
+
        $$\vec{M}_{I}= \vec{M}_{centermass}+\vec{IA}\wedge \vec{F}
                     =\vec{0}-l \vec{y}_1\wedge (-fsin \phi \vec{y}_1 +fcos \phi  \vec{x}_1)$$
-   
+
        $$\implies \tau_r =f\ell\sin\phi$$
 
     ### Total Torque and Differential Equation
@@ -456,7 +454,6 @@ def _(mo):
     The final differential equation is:
 
     $$\ddot{\theta} = -\frac{3g}{2\ell}\sin\theta + \frac{3f}{2M\ell}\sin\phi$$
-
     """
     )
     return
@@ -536,7 +533,7 @@ def _(J, M, g, l, np, solve_ivp):
         # solve_ivp
         sol_ivp = solve_ivp(dynamics, t_span, y0, dense_output=True)
 
- 
+
         def sol(t):
             return sol_ivp.sol(t)
 
@@ -581,6 +578,165 @@ def _(mo):
     return
 
 
+app._unparsable_cell(
+    r"""
+    We are given the vertical position (in meters) of a booster with mass \( m = 1 \, \mathrm{kg} \), governed by the following differential equation according to Newton's second law:
+
+    $$
+    \ddot{y}(t) = \frac{f(t)}{M} - g,
+    $$
+
+    At the initial time \( t = 0 \), the initial conditions are:  
+
+    - \( y(0) = 10 \),  
+    - \( \dot{y}(0) = v_0 \),  
+    - \( \dot{x}(0) = 0 \),  
+    - \( \theta(0) = 0 \),  
+    - \( \dot{\theta}(0) = 0 \).
+
+    We want to find a time-varying force \( f(t) \) such that:
+
+    - \( y(5) = \ell \) (landing at final altitude),  
+    - \( \dot{y}(5) = 0 \) (zero velocity at landing).
+
+
+
+    First, we need to find a reference trajectory \( y(t) \) satisfying the boundary conditions:
+
+    $$
+    \begin{cases}
+    y(0) = 10, \\
+    \dot{y}(0) = v_0, \\
+    y(5) =\ell \, \\
+    \dot{y}(5) = 0.
+    \end{cases}
+    $$
+
+    Assume a cubic polynomial form for \( y(t) \):
+
+    $$
+    y(t) = a t^3 + b t^2 + c t + d.
+    $$
+
+    Imposing the four conditions, we get the following system of equations:
+
+    $$
+    \begin{cases}
+    d = 10, \\
+    c = v_0, \\
+    125a + 25b + 5c + d = \ell \ \\
+    75a + 10b + c = 0.
+    \end{cases}
+    $$
+
+    Solving this system, we find:  
+    - \( a = \frac{1}{25} v_0 + 10 - \ell \),  
+    - \( b = -\frac{100}{3} - \frac{2}{5} v_0 + \frac{17}{5} \ell \),  
+    - \( c = v_0 \).
+
+
+    From the second derivative of \( y(t) \), we get:
+
+    $$
+    \ddot{y}(t) = 6 a t + 2b.
+    $$
+
+
+    We can now compute the required force \( f(t) \) as:
+
+    $$
+    f(t) = \left( \frac{6}{25} v_0 + 60 - 6\ell \right) t + \left( -\frac{200}{3} - \frac{4}{5} v_0 + \frac{34}{5} \ell \right) + 9.81.
+    $$
+
+    This force ensures that the booster follows the desired trajectory exactly.
+    """,
+    name="_"
+)
+
+
+@app.cell
+def _(M, g, np, solve_ivp):
+
+    ell = 1  # half-length of booster (m)
+    y0 = 10  # initial height (m)
+    v0 = 0  # initial velocity (m/s)
+    t_final = 5  # final time (s)
+
+    # Define the cubic trajectory coefficients
+    def get_trajectory_coefficients(v0, y0, y_final, t_final):
+        """
+        Calculate the coefficients of a cubic polynomial y(t) = at³ + bt² + ct + d
+        that satisfies the boundary conditions:
+        y(0) = y0, y'(0) = v0, y(t_final) = y_final, y'(t_final) = 0
+        """
+        d = y0
+        c = v0
+
+        # These formulas come from solving the system of linear equations:
+        # d = y0
+        # c = v0
+        # a*t_final³ + b*t_final² + c*t_final + d = y_final
+        # 3a*t_final² + 2b*t_final + c = 0
+        a = (2*(y0 - y_final) + t_final*(v0 + 0)) / (t_final**3)
+        b = (3*(y_final - y0) - t_final*(2*v0 + 0)) / (t_final**2)
+
+        return a, b, c, d
+
+    # Get trajectory coefficients
+    a, b, c, d = get_trajectory_coefficients(v0, y0, ell, t_final)
+
+    # Define the trajectory and its derivatives
+    def y_trajectory(t):
+        return a * t*3 + b * t*2 + c * t + d
+
+    def dy_trajectory(t):
+        return 3 * a * t**2 + 2 * b * t + c
+
+    def ddy_trajectory(t):
+        return 6 * a * t + 2 * b
+
+    # Calculate the required force
+    def f(t):
+        return M * (ddy_trajectory(t) + g)
+
+    # ODE for the system
+    def system(t, state):
+        # state = [y, dy/dt]
+        y, dy = state
+
+        # Calculate force at current time
+        force = f(t)
+
+        # Equations of motion
+        dy_dt = dy
+        ddy_dt = force/M - g
+
+        return [dy_dt, ddy_dt]
+
+    # Initial state [y(0), y'(0)]
+    initial_state = [y0, v0]
+
+    # Time points
+    t_span = (0, t_final)
+    t_eval = np.linspace(0, t_final, 100)
+
+    # Solve the ODE
+    solution = solve_ivp(system, t_span, initial_state, t_eval=t_eval, method='RK45')
+
+    # Extract the solution
+    t = solution.t
+    y = solution.y[0]
+    dy = solution.y[1]
+
+
+
+    # Print final state and force equation
+    print(f"Final position: {y[-1]:.6f} m (Target: {ell} m)")
+    print(f"Final velocity: {dy[-1]:.6f} m/s (Target: 0 m/s)")
+    print(f"Force equation: f(t) = {M*6*a:.6f}*t + {M*2*b:.6f} + {M*g:.6f}")
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -613,6 +769,91 @@ def _(mo):
     return
 
 
+@app.cell
+def _(Polygon, Rectangle, plt, transforms):
+
+
+    def draw_rocket(x, y, theta, thrust_force, phi, M=1, g=1, l=1, ax=None):
+
+        # Import inside function to avoid global redefinition 
+        # in Marimo environment
+
+
+        # Create axes if not provided
+        if ax is None:
+            ax = plt.gca()
+
+        # Booster dimensions - length is now 2*l
+        booster_length = 2 * l
+        booster_width = l/2  # Ajusté pour être proportionnel à l
+
+        # Draw landing zone at (0, -20)
+        landing_zone = Rectangle((-5, -25), 10, 1, color='orange', alpha=0.7)
+        ax.add_patch(landing_zone)
+
+        # Calculate flame length (proportional to thrust)
+        flame_length = (thrust_force / (M * g)) * l if (M * g) != 0 else 0
+        flame_width = booster_width * 0.8
+
+        # Create a transformation for the booster orientation
+
+        t = transforms.Affine2D().rotate(theta).translate(x, y)
+
+        # Draw the booster body (black rectangle)
+        booster_x = -booster_width / 2
+        booster_y = -booster_length / 2
+        booster = Rectangle((booster_x, booster_y), booster_width, booster_length, 
+                            color='black', transform=t + ax.transData)
+        ax.add_patch(booster)
+
+        # Calculate flame orientation (relative to booster orientation)
+        flame_angle = phi  # phi is relative to the booster's orientation
+
+        # Create flame shape as a triangle/polygon
+        flame_t = transforms.Affine2D().rotate(flame_angle).translate(0, -booster_length/2).rotate(theta).translate(x, y)
+        # Use numpy locally to avoid global import
+        import numpy
+        flame_points = numpy.array([
+            [-flame_width/2, 0],
+            [flame_width/2, 0],
+            [0, -flame_length]
+        ])
+        flame = Polygon(flame_points, closed=True, color='red', alpha=0.8, 
+                        transform=flame_t + ax.transData)
+        ax.add_patch(flame)
+
+        # Set appropriate limits and aspect ratio
+        ax.set_xlim(-20, 20)
+        ax.set_ylim(-25, 20)  # Ajusté pour mieux voir la zone d'atterrissage
+        ax.grid(True)
+        ax.set_aspect('equal')
+
+        # Set labels
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+
+        return ax
+
+    # Example usage:
+    if __name__ == "__main__":
+
+        plt.figure(figsize=(6, 10))
+        ax = plt.gca()
+
+        # Example parameters with renamed variables to avoid conflicts
+        pos_x = 0.5      # x position
+        pos_y = 0        # y position
+        theta = 0.2      # orientation angle in radians
+        thrust = 5       # thrust force with renamed variable
+        phi = 0.2        # thrust direction (relative to booster orientation) in radians
+
+        draw_rocket(pos_x, pos_y, theta, thrust, phi)
+        plt.title("Rocket Booster Visualization")
+        plt.tight_layout()
+        plt.show()
+    return (draw_rocket,)
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -632,6 +873,174 @@ def _(mo):
     As an intermediary step, you can begin with production of image snapshots of the booster location (every 1 sec).
     """
     )
+    return
+
+
+@app.cell
+def _(
+    FFMpegWriter,
+    FuncAnimation,
+    M,
+    draw_rocket,
+    g,
+    l,
+    mo,
+    np,
+    plt,
+    redstart_solve,
+    tqdm,
+):
+    def create_booster_snapshots(title, t_span, y0, f_phi):
+            sol = redstart_solve(t_span, y0, f_phi)
+
+            # Create snapshots at 1-second intervals
+            snapshot_times = np.linspace(t_span[0], t_span[1], 6)  # 0s, 1s, 2s, 3s, 4s, 5s
+
+            fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+            axes = axes.flatten()
+
+            for i, t in enumerate(snapshot_times):
+                # Get state at time t
+                state = sol(t)
+                x, dx, y, dy, theta, dtheta = state
+
+                # Get control inputs at time t
+                f, phi = f_phi(t, state)
+
+                # Set up subplot
+                ax = axes[i]
+
+                # Draw the booster
+                draw_rocket(x, y, theta, f, phi, M, g, l, ax=ax)
+
+                # Title for each snapshot
+                ax.set_title(f"t = {t:.1f}s")
+
+            # Overall title
+            fig.suptitle(title, fontsize=16)
+            plt.tight_layout()
+            return fig
+
+        # Function to create videos of the booster movement
+    def create_booster_video(filename, title, t_span, y0, f_phi, fps=30):
+            sol = redstart_solve(t_span, y0, f_phi)
+
+            # Create figure for animation
+            fig = plt.figure(figsize=(8, 10))
+
+            # Number of frames for animation
+            num_frames = int(fps * (t_span[1] - t_span[0]))
+
+            # Time points for animation
+            t_points = np.linspace(t_span[0], t_span[1], num_frames)
+
+            # Setup animation function
+            def animate(frame_index):
+                # Clear the canvas
+                plt.clf()
+
+                # Get time for this frame
+                t = t_points[frame_index]
+
+                # Get state at this time
+                state = sol(t)
+                x, dx, y, dy, theta, dtheta = state
+
+                # Get control inputs at this time
+                f, phi = f_phi(t, state)
+
+                # Draw the booster
+                ax = plt.gca()
+                draw_rocket(x, y, theta, f, phi, M, g, l, ax=ax)
+
+                # Add title with time and state information
+                plt.title(f"{title} - t={t:.2f}s\nPosition: ({x:.2f}, {y:.2f}), Angle: {theta:.2f} rad")
+
+                # Update progress bar
+                pbar.update(1)
+
+            # Create and save animation
+            pbar = tqdm(total=num_frames, desc=f"Generating {title} video")
+            anim = FuncAnimation(fig, animate, frames=num_frames)
+            writer = FFMpegWriter(fps=fps)
+            anim.save(filename, writer=writer)
+            pbar.close()
+
+            print(f"Video saved as {filename}")
+            return mo.video(src=filename)
+
+        # Common initial state
+    initial_state = [0.0, 0.0, 10.0, 0.0, 0.0, 0.0]  # [x, dx, y, dy, theta, dtheta]
+    t_span = [0.0, 5.0]
+
+        # 1. Case: f=0, phi=0 (free fall)
+    def f_phi_case1(t, y):
+            return np.array([0.0, 0.0])  # [f, phi]
+
+        # 2. Case: f=Mg, phi=0 (hover)
+    def f_phi_case2(t, y):
+            return np.array([M * g, 0.0])  # [f, phi]
+
+        # 3. Case: f=Mg, phi=pi/8 (rotation with constant thrust)
+    def f_phi_case3(t, y):
+            return np.array([M * g, np.pi/8])  # [f, phi]
+
+        # 4. Case: Controlled landing
+    def f_phi_case4(t, y):
+            # Calculate trajectory coefficients for controlled landing
+            y0 = 10.0
+            v0 = 0.0
+            y_final = l
+            t_final = 5.0
+
+            # These formulas come from solving the boundary condition system
+            a = (2*(y0 - y_final) + t_final*(v0)) / (t_final**3)
+            b = (3*(y_final - y0) - t_final*(2*v0)) / (t_final**2)
+            c = v0
+
+            # Calculate required acceleration
+            ddy = 6 * a * t + 2 * b
+
+            # Required force to achieve this acceleration
+            f_required = M * (ddy + g)
+
+            return np.array([f_required, 0.0])  # [f, phi]
+
+        # Create snapshots for each case
+    print("Creating snapshots...")
+    fig1 = create_booster_snapshots("Free Fall (f=0, phi=0)", t_span, initial_state, f_phi_case1)
+    fig2 = create_booster_snapshots("Hover (f=Mg, phi=0)", t_span, initial_state, f_phi_case2)
+    fig3 = create_booster_snapshots("Angled Thrust (f=Mg, phi=pi/8)", t_span, initial_state, f_phi_case3)
+    fig4 = create_booster_snapshots("Controlled Landing", t_span, initial_state, f_phi_case4)
+
+        # Display the snapshots
+    mo.md("## Snapshots of Booster Position")
+    mo.output([
+            fig1,
+            fig2,
+            fig3,
+            fig4
+        ])
+
+        # Create videos for each case
+    print("Creating videos...")
+    mo.md("## Videos of Booster Movement")
+    video1 = create_booster_video("free_fall.mp4", "Free Fall", t_span, initial_state, f_phi_case1)
+    video2 = create_booster_video("hover.mp4", "Hover", t_span, initial_state, f_phi_case2)
+    video3 = create_booster_video("angled_thrust.mp4", "Angled Thrust", t_span, initial_state, f_phi_case3)
+    video4 = create_booster_video("controlled_landing.mp4", "Controlled Landing", t_span, initial_state, f_phi_case4)
+
+    mo.output([
+    mo.md("### Free Fall (f=0, phi=0)"),
+            video1,
+    mo.md("### Hover (f=Mg, phi=0)"),
+            video2,
+    mo.md("### Angled Thrust (f=Mg, phi=pi/8)"),
+            video3,
+    mo.md("### Controlled Landing"),
+            video4
+        ])
+
     return
 
 
