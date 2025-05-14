@@ -215,9 +215,9 @@ def _(mo):
 
 @app.cell
 def _():
-    g = 1   
-    M = 1
-    l = 1
+    g = 1.0      # Gravitational acceleration (in m/s²)
+    M = 1.0      # Booster mass (in kg)
+    l = 1.0      # Half-length of the booster (in m) - total length is 2l = 2 meters
     return
 
 
