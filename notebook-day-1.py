@@ -59,7 +59,7 @@ def _(mo):
 def _():
     import scipy
     import scipy.integrate as sci
-
+    from scipy.integrate import solve_ivp
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation, FFMpegWriter
@@ -71,7 +71,7 @@ def _():
     import autograd.numpy as np
     import autograd.numpy.linalg as la
     from autograd import isinstance, tuple
-    return FFMpegWriter, FuncAnimation, np, plt, tqdm
+    return FFMpegWriter, FuncAnimation, np, plt, solve_ivp, tqdm
 
 
 @app.cell(hide_code=True)
@@ -218,7 +218,7 @@ def _():
     g = 1
     M = 1
     l = 1
-    return M, l
+    return M, g, l
 
 
 @app.cell(hide_code=True)
@@ -258,7 +258,6 @@ app._unparsable_cell(
 def _(mo):
     mo.md(
         r"""
-
     When expressing the force applied by the reactor in the reference of the booster, we obtain :
 
     $$
@@ -367,9 +366,6 @@ def _(mo):
         r"""
 
 
-    ### Huygens Theorem :
-
-    The moment of inertia with respect to a point located at a distance \( d \) from the center of mass is given by:
 
     \[
     J = J_{\text{center}} + m d^2
@@ -385,17 +381,6 @@ def _(mo):
     J_{\text{center}} = \frac{1}{12} M (2l)^2 = \frac{1}{3} M l^2
     \]
 
-    - The distance between the center and the end is \( l \), so:
-
-    \[
-    J = \frac{1}{3} M l^2 + M l^2 = \boxed{\frac{4}{3} M l^2}
-    \]
-
-    Substituting \( m = 1 \, \text{kg} \) and \( l = 1 \, \text{m} \):
-
-    \[
-    J = \frac{1}{3} (1) (1)^2 + (1) (1)^2 = \frac{1}{3} + 1 = \frac{4}{3} = 1.33 \, \text{kg} \cdot \text{m}^2
-    \]
     """
     )
     return
@@ -404,7 +389,7 @@ def _(mo):
 @app.cell
 def _(M, l):
     J = (4/3) * M * l**2
-    return
+    return (J,)
 
 
 @app.cell(hide_code=True)
@@ -414,6 +399,64 @@ def _(mo):
     ## 🧩 Tilt
 
     Give the ordinary differential equation that governs the tilt angle $\theta$.
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+
+
+    According to the moments theorem :
+
+    $$\sum \tau = I\ddot{\theta}$$
+
+    where:
+
+    $\sum \tau$ is the sum of all torques about the center of mass
+    $I$ is the moment of inertia
+    $\ddot{\theta}$ is the angular acceleration
+
+
+    ### Calculation of Torques
+
+    1. **Gravitational Force Torque**: 
+       Since gravity acts at the center of mass, its moment arm for rotation about the center is zero. However, if we consider the effect of gravity when the booster is tilted, we need to analyze the effective moment.
+   
+       When the booster is tilted at angle $\theta$, the center of mass is displaced from the vertical axis. The gravitational force creates a torque that tries to restore the vertical position.
+   
+       The moment arm for this torque is $\ell\sin\theta$, and the torque is:
+       $$\tau_g = -Mg\ell\sin\theta$$
+   
+       The negative sign indicates that this torque opposes an increase in $\theta$.
+
+    2. **Reactor Force Torque**:
+
+   
+       $$\vec{M}_{I}= \vec{M}_{centermass}+\vec{IA}\wedge \vec{F}
+                    =\vec{0}-l \vec{y}_1\wedge (-fsin \phi \vec{y}_1 +fcos \phi  \vec{x}_1)$$
+   
+       $$\implies \tau_r =f\ell\sin\phi$$
+
+    ### Total Torque and Differential Equation
+
+    The total torque is the sum of all torques:
+    $$\sum \tau = \tau_g + \tau_r = -Mg\ell\sin\theta + f\ell\sin\phi$$
+
+    Applying the moments theorem:
+    $$\sum \tau = I\ddot{\theta}$$
+
+    Therefore:
+    $$I\ddot{\theta} = -Mg\ell\sin\theta + f\ell\sin\phi$$
+
+
+    The final differential equation is:
+
+    $$\ddot{\theta} = -\frac{3g}{2\ell}\sin\theta + \frac{3f}{2M\ell}\sin\phi$$
+
     """
     )
     return
@@ -460,6 +503,67 @@ def _(mo):
     Test this typical example with your function `redstart_solve` and check that its graphical output makes sense.
     """
     )
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _(J, M, g, l, np, solve_ivp):
+    def redstart_solve(t_span, y0, f_phi):
+        def dynamics(t, y):
+            # État 
+            x, dx, y_pos, dy, theta, dtheta = y
+
+            f, phi = f_phi(t, y)
+
+            fx = -f * np.sin(theta + phi)
+            fy = f * np.cos(theta + phi) - M * g  
+
+            # Accélérations
+            ddx = fx / M
+            ddy = fy / M
+
+            # Moment autour du point I
+            torque = l * f * np.sin(phi)
+            ddtheta = torque / J
+
+            return [dx, ddx, dy, ddy, dtheta, ddtheta]
+
+        # solve_ivp
+        sol_ivp = solve_ivp(dynamics, t_span, y0, dense_output=True)
+
+ 
+        def sol(t):
+            return sol_ivp.sol(t)
+
+        return sol
+
+
+    return (redstart_solve,)
+
+
+@app.cell
+def _(l, np, plt, redstart_solve):
+    def free_fall_example():
+        t_span = [0.0, 5.0]
+        y0 = [0.0, 0.0, 10.0, 0.0, 0.0, 0.0] # state: [x, dx, y, dy, theta, dtheta]
+        def f_phi(t, y):
+            return np.array([0.0, 0.0]) # input [f, phi]
+        sol = redstart_solve(t_span, y0, f_phi)
+        t = np.linspace(t_span[0], t_span[1], 1000)
+        y_t = sol(t)[2]
+        plt.plot(t, y_t, label=r"$y(t)$ (height in meters)")
+        plt.plot(t, l * np.ones_like(t), color="grey", ls="--", label=r"$y=\ell$")
+        plt.title("Free Fall")
+        plt.xlabel("time $t$")
+        plt.grid(True)
+        plt.legend()
+        return plt.gcf()
+    free_fall_example()
     return
 
 
