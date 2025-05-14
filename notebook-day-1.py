@@ -213,6 +213,14 @@ def _(mo):
     return
 
 
+@app.cell
+def _():
+    g = 1   
+    M = 1
+    l = 1
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
