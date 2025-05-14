@@ -884,163 +884,170 @@ def _(
     draw_rocket,
     g,
     l,
-    mo,
     np,
     plt,
     redstart_solve,
     tqdm,
 ):
-    def create_booster_snapshots(title, t_span, y0, f_phi):
-            sol = redstart_solve(t_span, y0, f_phi)
 
-            # Create snapshots at 1-second intervals
-            snapshot_times = np.linspace(t_span[0], t_span[1], 6)  # 0s, 1s, 2s, 3s, 4s, 5s
+    def create_booster_video(filename, t_span, y0, f_phi, title="Booster Simulation"):
 
-            fig, axes = plt.subplots(2, 3, figsize=(15, 8))
-            axes = axes.flatten()
+        # Solve trajectory
+        sol = redstart_solve(t_span, y0, f_phi)
 
-            for i, t in enumerate(snapshot_times):
-                # Get state at time t
-                state = sol(t)
-                x, dx, y, dy, theta, dtheta = state
+        # Create figure
+        fig, ax = plt.figure(figsize=(10, 6)), plt.gca()
+        ax.set_aspect('equal')
+        plt.close()  # Close to prevent display
 
-                # Get control inputs at time t
-                f, phi = f_phi(t, state)
+        # Simulation time points
+        num_frames = 100
+        t_frames = np.linspace(t_span[0], t_span[1], num_frames)
 
-                # Set up subplot
-                ax = axes[i]
+        # Set axes limits based on trajectory
+        y_data = sol(t_frames)
+        x_min, x_max = min(y_data[0]) - 2*l, max(y_data[0]) + 2*l
+        y_min, y_max = min(min(y_data[2]) - 2*l, 0), max(y_data[2]) + 2*l
 
-                # Draw the booster
-                draw_rocket(x, y, theta, f, phi, M, g, l, ax=ax)
+        pbar = tqdm(total=num_frames, desc=f"Generating {title}")
 
-                # Title for each snapshot
-                ax.set_title(f"t = {t:.1f}s")
+        def animate(frame_idx):
+            # Clear previous frame
+            ax.clear()
 
-            # Overall title
-            fig.suptitle(title, fontsize=16)
-            plt.tight_layout()
-            return fig
+            # Set limits and title
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            ax.set_title(f"{title} - t={t_frames[frame_idx]:.2f}s")
+            ax.grid(True)
 
-        # Function to create videos of the booster movement
-    def create_booster_video(filename, title, t_span, y0, f_phi, fps=30):
-            sol = redstart_solve(t_span, y0, f_phi)
+            # Get state for current frame
+            t = t_frames[frame_idx]
+            state = sol(t)
+            x, dx, y, dy, theta, dtheta = state
 
-            # Create figure for animation
-            fig = plt.figure(figsize=(8, 10))
+            # Get force and phi for current frame
+            f, phi = f_phi(t, state)
 
-            # Number of frames for animation
-            num_frames = int(fps * (t_span[1] - t_span[0]))
+            # Draw booster
+            draw_rocket(ax, x, y, theta, f, phi)
 
-            # Time points for animation
-            t_points = np.linspace(t_span[0], t_span[1], num_frames)
+            # Show trajectory
+            t_past = t_frames[:frame_idx+1]
+            states_past = sol(t_past)
+            ax.plot(states_past[0], states_past[2], 'r--', alpha=0.5)
 
-            # Setup animation function
-            def animate(frame_index):
-                # Clear the canvas
-                plt.clf()
+            # Update progress
+            pbar.update(1)
 
-                # Get time for this frame
-                t = t_points[frame_index]
+        # Create animation
+        anim = FuncAnimation(fig, animate, frames=num_frames)
 
-                # Get state at this time
-                state = sol(t)
-                x, dx, y, dy, theta, dtheta = state
+        # Save animation
+        writer = FFMpegWriter(fps=30)
+        anim.save(filename, writer=writer)
 
-                # Get control inputs at this time
-                f, phi = f_phi(t, state)
+        pbar.close()
+        print(f"Animation saved as {filename}")
 
-                # Draw the booster
-                ax = plt.gca()
-                draw_rocket(x, y, theta, f, phi, M, g, l, ax=ax)
+        return filename
 
-                # Add title with time and state information
-                plt.title(f"{title} - t={t:.2f}s\nPosition: ({x:.2f}, {y:.2f}), Angle: {theta:.2f} rad")
+    def create_all_scenarios():
+        # Common parameters
+        t_span = [0.0, 5.0]
+        y0 = [0.0, 0.0, 10.0, 0.0, 0.0, 0.0]  # [x, dx, y, dy, theta, dtheta]
 
-                # Update progress bar
-                pbar.update(1)
+        # Scenario 1: Free fall (f=0, phi=0)
+        def f_phi_1(t, y):
+            return np.array([0.0, 0.0])
 
-            # Create and save animation
-            pbar = tqdm(total=num_frames, desc=f"Generating {title} video")
-            anim = FuncAnimation(fig, animate, frames=num_frames)
-            writer = FFMpegWriter(fps=fps)
-            anim.save(filename, writer=writer)
-            pbar.close()
+        # Scenario 2: Hovering (f=Mg, phi=0)
+        def f_phi_2(t, y):
+            return np.array([M*g, 0.0])
 
-            print(f"Video saved as {filename}")
-            return mo.video(src=filename)
+        # Scenario 3: Tilted thrust (f=Mg, phi=pi/8)
+        def f_phi_3(t, y):
+            return np.array([M*g, np.pi/8])
 
-        # Common initial state
-    initial_state = [0.0, 0.0, 10.0, 0.0, 0.0, 0.0]  # [x, dx, y, dy, theta, dtheta]
-    t_span = [0.0, 5.0]
+        # Scenario 4: Controlled landing
+        def f_phi_4(t, y):
+            # Example implementation for controlled landing
+            # Calculate the force needed to slow down and land at y=l at t=5s
+            y_pos = y[2]
+            v_y = y[3]
+            target_y = l
 
-        # 1. Case: f=0, phi=0 (free fall)
-    def f_phi_case1(t, y):
-            return np.array([0.0, 0.0])  # [f, phi]
+            # Time remaining
+            t_remaining = max(0.1, t_span[1] - t)
 
-        # 2. Case: f=Mg, phi=0 (hover)
-    def f_phi_case2(t, y):
-            return np.array([M * g, 0.0])  # [f, phi]
+            # Simple PD controller to achieve landing
+            Kp = 2.0  # Position gain
+            Kd = 3.0  # Velocity gain
 
-        # 3. Case: f=Mg, phi=pi/8 (rotation with constant thrust)
-    def f_phi_case3(t, y):
-            return np.array([M * g, np.pi/8])  # [f, phi]
+            # Target acceleration to reach y=l and v=0 at t=5s
+            a_desired = 2 * (target_y - y_pos - v_y * t_remaining) / (t_remaining**2)
 
-        # 4. Case: Controlled landing
-    def f_phi_case4(t, y):
-            # Calculate trajectory coefficients for controlled landing
-            y0 = 10.0
-            v0 = 0.0
-            y_final = l
-            t_final = 5.0
+            # Force needed (Newton's law)
+            f = M * (g + a_desired)
 
-            # These formulas come from solving the boundary condition system
-            a = (2*(y0 - y_final) + t_final*(v0)) / (t_final**3)
-            b = (3*(y_final - y0) - t_final*(2*v0)) / (t_final**2)
-            c = v0
+            # Ensure positive force
+            f = max(0, f)
 
-            # Calculate required acceleration
-            ddy = 6 * a * t + 2 * b
+            return np.array([f, 0.0])
 
-            # Required force to achieve this acceleration
-            f_required = M * (ddy + g)
+        # Create videos
+        video1 = create_booster_video("scenario1_free_fall.mp4", t_span, y0, f_phi_1, "Free Fall")
+        video2 = create_booster_video("scenario2_hovering.mp4", t_span, y0, f_phi_2, "Hovering")
+        video3 = create_booster_video("scenario3_tilted.mp4", t_span, y0, f_phi_3, "Tilted Thrust")
+        video4 = create_booster_video("scenario4_landing.mp4", t_span, y0, f_phi_4, "Controlled Landing")
 
-            return np.array([f_required, 0.0])  # [f, phi]
+        return [video1, video2, video3, video4]
 
-        # Create snapshots for each case
-    print("Creating snapshots...")
-    fig1 = create_booster_snapshots("Free Fall (f=0, phi=0)", t_span, initial_state, f_phi_case1)
-    fig2 = create_booster_snapshots("Hover (f=Mg, phi=0)", t_span, initial_state, f_phi_case2)
-    fig3 = create_booster_snapshots("Angled Thrust (f=Mg, phi=pi/8)", t_span, initial_state, f_phi_case3)
-    fig4 = create_booster_snapshots("Controlled Landing", t_span, initial_state, f_phi_case4)
+    # Create snapshots for intermediate visualization (every 1 second)
+    def create_snapshots():
+        # Common parameters
+        t_span = [0.0, 5.0]
+        y0 = [0.0, 0.0, 10.0, 0.0, 0.0, 0.0]  # [x, dx, y, dy, theta, dtheta]
+        snapshot_times = np.linspace(0, 5, 6)  # 0, 1, 2, 3, 4, 5 seconds
 
-        # Display the snapshots
-    mo.md("## Snapshots of Booster Position")
-    mo.output([
-            fig1,
-            fig2,
-            fig3,
-            fig4
-        ])
+        # Scenario 1: Free fall
+        def f_phi_1(t, y):
+            return np.array([0.0, 0.0])
 
-        # Create videos for each case
-    print("Creating videos...")
-    mo.md("## Videos of Booster Movement")
-    video1 = create_booster_video("free_fall.mp4", "Free Fall", t_span, initial_state, f_phi_case1)
-    video2 = create_booster_video("hover.mp4", "Hover", t_span, initial_state, f_phi_case2)
-    video3 = create_booster_video("angled_thrust.mp4", "Angled Thrust", t_span, initial_state, f_phi_case3)
-    video4 = create_booster_video("controlled_landing.mp4", "Controlled Landing", t_span, initial_state, f_phi_case4)
+        sol1 = redstart_solve(t_span, y0, f_phi_1)
 
-    mo.output([
-    mo.md("### Free Fall (f=0, phi=0)"),
-            video1,
-    mo.md("### Hover (f=Mg, phi=0)"),
-            video2,
-    mo.md("### Angled Thrust (f=Mg, phi=pi/8)"),
-            video3,
-    mo.md("### Controlled Landing"),
-            video4
-        ])
+        # Create figure with subplots for each time point
+        fig, axes = plt.subplots(1, len(snapshot_times), figsize=(15, 4))
+        fig.suptitle("Free Fall - Snapshots Every Second", fontsize=16)
 
+        for i, t in enumerate(snapshot_times):
+            ax = axes[i]
+            ax.set_aspect('equal')
+            ax.set_xlim(-2, 2)
+            ax.set_ylim(-1, 11)
+            ax.set_title(f"t={t}s")
+            ax.grid(True)
+
+            # Get state
+            state = sol1(t)
+            x, dx, y, dy, theta, dtheta = state
+
+            # Draw booster
+            draw_rocket(ax, x, y, theta, 0, 0)
+
+        plt.tight_layout()
+        plt.savefig("free_fall_snapshots.png")
+
+        return "free_fall_snapshots.png"
+
+    if __name__== "_main_":
+        # Create snapshots as an intermediate step
+        snapshot_file = create_snapshots()
+        print(f"Created snapshots: {snapshot_file}")
+
+        # Create all video scenarios
+        videos = create_all_scenarios()
+        print(f"Created videos: {videos}")
     return
 
 
