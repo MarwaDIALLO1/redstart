@@ -1123,7 +1123,7 @@ def _(mo):
     \begin{cases}
     \Delta \ddot{x} = -g (\Delta \theta + \Delta \phi), \\
     \Delta \ddot{y} = \dfrac{\Delta f}{M}, \\
-    \Delta \ddot{\theta} = -\dfrac{\ell g}{J} \Delta \phi.
+    \Delta \ddot{\theta} = -\dfrac{M \ell g}{J} \Delta \phi.
     \end{cases}
     $$
     """
@@ -1200,7 +1200,7 @@ def _(mo):
     \begin{aligned}
     \Delta \ddot{x} &= -g(\Delta \theta + \Delta \varphi), \\
     \Delta \ddot{y} &= \frac{1}{M} \Delta f, \\
-    \Delta \ddot{\theta} &= -\frac{g}{\ell J} \Delta \varphi.
+    \Delta \ddot{\theta} &= -\frac{M g \ell}{J} \Delta \varphi.
     \end{aligned}
     \]
 
@@ -1218,7 +1218,7 @@ def _(mo):
     \Delta \dot{y} &= \Delta v_y \\
     \Delta \dot{v}_y &= \frac{1}{M} \Delta f \\
     \Delta \dot{\theta} &= \Delta \omega \\
-    \Delta \dot{\omega} &= -\frac{g \cdot \ell}{J} \Delta \varphi
+    \Delta \dot{\omega} &= -\frac{M g \cdot \ell}{J} \Delta \varphi
     \end{aligned}
     \]
 
@@ -1250,7 +1250,7 @@ def _(mo):
     0 & 0 \\
     \frac{1}{M} & 0 \\
     0 & 0 \\
-    0 & -\frac{g \ell}{J}
+    0 & -\frac{M g \ell}{J}
     \end{bmatrix}
     \]
     """
@@ -1312,7 +1312,7 @@ def _(mo):
 
     - \( B \in \mathbb{R}^{6 \times 2} \)
     - \( \mathcal{C} \in \mathbb{R}^{6 \times 12} \)
-  
+
     Rank Analysis
 
     Using the python computation with the values (\( g = 1, M = 1, l = 1, J = 1 \)), the rank of the controllability matrix is:
@@ -1357,7 +1357,7 @@ def _(J, M, g, l, np):
         [0, 0],
         [1/M, 0],
         [0, 0],
-        [0, -l * g / J]
+        [0, -l * g * M / J]
     ])
 
 
@@ -1403,7 +1403,7 @@ def _(mo):
     0 & 0 \\
     0 & -g \\
     0 & 0 \\
-    0 & -\frac{g \ell}{J}
+    0 & -\frac{ M g \ell}{J}
     \end{bmatrix}
     \]
     """
@@ -1412,7 +1412,7 @@ def _(mo):
 
 
 @app.cell
-def _(J, KCM, g, l, np):
+def _(J, KCM, M, g, l, np):
     A1 = np.array([
         [0, 1, 0, 0],
         [0, 0, -g, 0],
@@ -1425,7 +1425,7 @@ def _(J, KCM, g, l, np):
         [0, 0],
         [0, -g],
         [0, 0],
-        [0, -l * g / J]
+        [0, -l * g * M / J]
     ])
 
     # Calculate the controllability matrix
@@ -1456,8 +1456,10 @@ def _(mo):
     return
 
 
-app._unparsable_cell(
-    r"""
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
     ## Special Case: Free Fall ($\phi(t) = 0$, $f = 0$)
 
     In this case:
@@ -1474,15 +1476,13 @@ app._unparsable_cell(
     \end{aligned}
     $$
 
-    ---
 
     ## Initial Conditions
 
     - $x(0) = 0$, $\dot{x}(0) = 0$
-    - $y(0) = y_0$, $\dot{y}(0) = v_0$
+    - $y(0) = 10$, $\dot{y}(0) = 0$
     - $\theta(0) = \frac{\pi}{4}$, $\dot{\theta}(0) = 0$
 
-    ---
 
     ## Analytical Solutions
 
@@ -1497,24 +1497,23 @@ app._unparsable_cell(
     ### Vertical position $y(t)$
 
     $$
-    \ddot{y} = -g \Rightarrow \dot{y}(t) = -g t + v_0,\quad y(t) = -\frac{1}{2} g t^2 + v_0 t + y_0
+    \ddot{y} = -g \Rightarrow \dot{y}(t) = -g t ,\quad y(t) = -\frac{1}{2} g t^2 + y_0
     $$
-    """,
-    name="_"
-)
+    """
+    )
+    return
 
 
 @app.cell
 def _(g, np, plt):
     theta0 = np.pi / 4  
-    y0 = 0              # Initial vertical position
-    v0 = 0              # Initial vertical velocity
+    y0 = 10
     t = np.linspace(0, 2, 500)
 
 
     theta = theta0 * np.ones_like(t)
 
-    y = -0.5 * g * t**2 + v0 * t + y0
+    y = -0.5 * g * t**2  + y0
 
     plt.figure(figsize=(12, 5))
 
