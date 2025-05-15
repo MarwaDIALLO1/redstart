@@ -1280,7 +1280,7 @@ def _(A):
 
 @app.cell
 def _(mo):
-    mo.md(r"""All eigenvalues are zero. This means the system is not asymptotically stable - it's marginally stable or neutrally stable.""")
+    mo.md(r"""All eigenvalues are zero. This means the system is not asymptotically stable.""")
     return
 
 
