@@ -1745,31 +1745,31 @@ def _(J, M, g, l, np, plt, solve_ivp):
     k3 = -0.0297
     k4 = -0.1584
 
-    # Dynamics: [theta, theta_dot]
+    # Dynamics: [thetaa, theta_dot]
     def dynamics(t, y):
-        theta, theta_dot = y
-        phi = -k3 * theta - k4 * theta_dot
-        theta_ddot = D * (k3 * theta + k4 * theta_dot)
+        thetaa, theta_dot = y
+        phi = -k3 * thetaa - k4 * theta_dot
+        theta_ddot = D * (k3 * thetaa + k4 * theta_dot)
         return [theta_dot, theta_ddot]
 
     # Initial conditions
-    theta0 = np.pi / 4
+    thetaa0 = np.pi / 4
     theta_dot0 = 0
-    y0 = [theta0, theta_dot0]
+    y00 = [thetaa0, theta_dot0]
 
     # Time span
-    t_eval = np.linspace(0, 30, 1000)
-    sol = solve_ivp(dynamics, [0, 30], y0, t_eval=t_eval)
+    t_evalu = np.linspace(0, 30, 1000)
+    so = solve_ivp(dynamics, [0, 30], y00, t_evalu=t_evalu)
 
     # Compute phi over time
-    theta = sol.y[0]
-    theta_dot = sol.y[1]
-    phi = -k3 * theta - k4 * theta_dot
+    thetaa = so.y[0]
+    theta_dot = so.y[1]
+    phi = -k3 * thetaa - k4 * theta_dot
 
     # Plotting
     plt.figure(figsize=(10, 5))
-    plt.plot(sol.t, theta, label=r'$\Delta\theta(t)$')
-    plt.plot(sol.t, phi, label=r'$\Delta\phi(t)$')
+    plt.plot(so.t, thetaa, label=r'$\Delta \theta_a(t)$')
+    plt.plot(so.t, phi, label=r'$\Delta\phi(t)$')
     plt.axhline(np.pi/2, color='gray', linestyle='--', alpha=0.5)
     plt.axhline(-np.pi/2, color='gray', linestyle='--', alpha=0.5)
     plt.xlabel('Time [s]')
@@ -2211,8 +2211,7 @@ def _(mo):
 
 app._unparsable_cell(
     r"""
-    The previous parameters verify the required constraints 
-    Above we have ploted the required simulation
+    The following simulation demonstrates that the chosen parameters are valid for the non-linear model:
     """,
     name="_"
 )
