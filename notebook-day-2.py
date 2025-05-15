@@ -1270,6 +1270,20 @@ def _(mo):
     return
 
 
+@app.cell
+def _(A):
+    from scipy import linalg
+    eigenvalues, _ = linalg.eig(A)
+    eigenvalues
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""All eigenvalues are zero. This means the system is not asymptotically stable - it's marginally stable or neutrally stable.""")
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
