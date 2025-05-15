@@ -1001,7 +1001,7 @@ def _(mo):
     - **\( \theta = 0 \)**
     - **\( \varphi = 0 \)**
     - **\( f = Mg \)**
-
+    This is available for all the values of x and y 
     Therefore, the only possible equilibrium is when the booster is perfectly vertical (\( \theta = 0 \)), the force is aligned with its axis (\( \varphi = 0 \)), and the thrust exactly balances the weight of the booster (\( f = Mg \)).
     """
     )
@@ -1271,16 +1271,7 @@ def _(mo):
 
 
 @app.cell
-def _(g, np):
-    A = np.array([
-        [0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, -g, 0],
-        [0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 0, 0]
-    ])
-
+def _(A):
     from scipy import linalg
     eigenvalues, _ = linalg.eig(A)
     eigenvalues
@@ -1305,6 +1296,78 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    The controllability matrix \( \mathcal{C} \) is computed as:
+
+    \[
+    \mathcal{C} = \begin{bmatrix}
+    B & AB & A^2B & A^3B & A^4B & A^5B
+    \end{bmatrix}
+    \]
+
+    Where:
+
+    - \( B \in \mathbb{R}^{6 \times 2} \)
+    - \( \mathcal{C} \in \mathbb{R}^{6 \times 12} \)
+  
+    Rank Analysis
+
+    Using the python computation with the values (\( g = 1, M = 1, l = 1, J = 1 \)), the rank of the controllability matrix is:
+
+    \[
+    \text{rank}(\mathcal{C}) = 6
+    \]
+
+
+    Since:
+
+    \[
+    \text{rank}(\mathcal{C}) = n = 6
+    \]
+
+    *The system is controllable.*
+    """
+    )
+    return
+
+
+@app.cell
+def _(J, M, g, l, np):
+    from numpy.linalg import matrix_power
+
+    def KCM(A, B):
+        n = np.shape(A)[0]
+        return np.column_stack([matrix_power(A, k) @ B for k in range(n)])
+
+
+    A = np.array([
+        [0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, -g, 0],
+        [0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0]
+    ])
+    B = np.array([
+        [0, 0],
+        [0, -g],
+        [0, 0],
+        [1/M, 0],
+        [0, 0],
+        [0, -l * g / J]
+    ])
+
+
+    # Calculate the controllability matrix
+    C = KCM(A, B)
+    print("Controllability matrix shape:", C.shape)
+    print("Rank of controllability matrix:", np.linalg.matrix_rank(C))
+    return A, KCM
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -1320,6 +1383,66 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    \[
+    A =
+    \begin{bmatrix}
+    0 & 1 & 0 & 0\\
+    0 & 0 & -g & 0 \\
+    0 & 0 & 0 & 1 \\
+    0 & 0 & 0 & 0
+    \end{bmatrix}
+    \]
+
+    \[
+    B =
+    \begin{bmatrix}
+    0 & 0 \\
+    0 & -g \\
+    0 & 0 \\
+    0 & -\frac{g \ell}{J}
+    \end{bmatrix}
+    \]
+    """
+    )
+    return
+
+
+@app.cell
+def _(J, KCM, g, l, np):
+    A1 = np.array([
+        [0, 1, 0, 0],
+        [0, 0, -g, 0],
+        [0, 0, 0, 1],
+        [0, 0, 0, 0]
+    ])
+
+    # Input matrix B
+    B1 = np.array([
+        [0, 0],
+        [0, -g],
+        [0, 0],
+        [0, -l * g / J]
+    ])
+
+    # Calculate the controllability matrix
+    C1 = KCM(A1, B1)
+    print("Controllability matrix shape:", C1.shape)
+    print("Rank of controllability matrix:", np.linalg.matrix_rank(C1))
+    return
+
+
+app._unparsable_cell(
+    r"""
+    Thus, the new system is controllable.
+    """,
+    name="_"
+)
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -1330,6 +1453,86 @@ def _(mo):
     $x(0)=0$, $\dot{x}(0)=0$, $\theta(0) = 45 / 180  \times \pi$  and $\dot{\theta}(0) =0$. What do you see? How do you explain it?
     """
     )
+    return
+
+
+app._unparsable_cell(
+    r"""
+    ## Special Case: Free Fall ($\phi(t) = 0$, $f = 0$)
+
+    In this case:
+    $\Delta \phi = 0$,
+    $\Delta f = -Mg$ (since $f_{\text{eq}} = Mg$ and $f = 0$).
+
+    The equations become:
+
+    $$
+    \begin{aligned}
+    \Delta \ddot{x} &= -g \Delta \theta, \\
+    \Delta \ddot{y} &= -g, \\
+    \Delta \ddot{\theta} &= 0.
+    \end{aligned}
+    $$
+
+    ---
+
+    ## Initial Conditions
+
+    - $x(0) = 0$, $\dot{x}(0) = 0$
+    - $y(0) = y_0$, $\dot{y}(0) = v_0$
+    - $\theta(0) = \frac{\pi}{4}$, $\dot{\theta}(0) = 0$
+
+    ---
+
+    ## Analytical Solutions
+
+    ### Angle $\theta(t)$
+
+    $$
+    \ddot{\theta} = 0 \Rightarrow \dot{\theta} = \dot{\theta}(0) =0 \Rightarrow\theta(t) = \theta(0) = \frac{\pi}{4}
+    $$
+
+    *$\theta(t)$ remains constant.*
+
+    ### Vertical position $y(t)$
+
+    $$
+    \ddot{y} = -g \Rightarrow \dot{y}(t) = -g t + v_0,\quad y(t) = -\frac{1}{2} g t^2 + v_0 t + y_0
+    $$
+    """,
+    name="_"
+)
+
+
+@app.cell
+def _(g, np, plt):
+    theta0 = np.pi / 4  
+    y0 = 0              # Initial vertical position
+    v0 = 0              # Initial vertical velocity
+    t = np.linspace(0, 2, 500)
+
+
+    theta = theta0 * np.ones_like(t)
+
+    y = -0.5 * g * t**2 + v0 * t + y0
+
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(t, y, label=r'$y(t)$')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Vertical Position $y(t)$')
+    plt.title('Vertical Motion: $y(t)$')
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(t, theta, 'r', label=r'$\theta(t)$')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Angle $\theta(t)$')
+    plt.title(r'Orientation $\theta(t)$')
+    plt.grid(True)
+    plt.legend()
     return
 
 
