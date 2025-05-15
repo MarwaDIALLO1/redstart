@@ -959,6 +959,55 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    To find the possible equilibria of the system with constant inputs f and ϕ, we must analyze the differential equations that govern the dynamics of the booster.
+
+    We already have the Equations of Motion
+
+    **Center of mass:**
+    - \( M\ddot{x} = -f \sin(\theta + \varphi) \)
+    - \( M\ddot{y} = f \cos(\theta + \varphi) - Mg \)
+
+    **Tilt (angle):**
+    - \( J\ddot{\theta} = -\ell \sin(\varphi)f \)
+
+    An equilibrium state corresponds to a state where all time derivatives are zero, that is:
+
+    - \( \ddot{x} = 0 \)
+    - \( \ddot{y} = 0 \)
+    - \( \ddot{\theta} = 0 \)
+
+    1. From the tilt equation:  
+       \( J\ddot{\theta} = -\ell \sin(\varphi)f = 0 \Rightarrow \sin(\varphi) = 0 \Rightarrow \varphi = 0 \) or \( \pi \).  
+       But since \( |\varphi| < \frac{\pi}{2} \), only \( \varphi = 0 \) is valid.
+
+    2. From the vertical equation (y):  
+       \( M\ddot{y} = f \cos(\theta + \varphi) - Mg = 0 \Rightarrow f \cos(\theta + \varphi) = Mg \).  
+       Since \( \varphi = 0 \), this gives:  
+       \( f \cos(\theta) = Mg \)
+
+    3. From the horizontal equation (x):  
+       \( M\ddot{x} = -f \sin(\theta + \varphi) = 0 \Rightarrow \sin(\theta + \varphi) = 0 \Rightarrow \theta + \varphi = 0 \mod \pi \).  
+       With \( \varphi = 0 \), we get:  
+       \( \theta = 0 \mod \pi \).  
+       But since \( |\theta| < \frac{\pi}{2} \), only \( \theta = 0 \) is valid.
+
+
+    **The only possible equilibrium states under the constraints \( |\theta| < \frac{\pi}{2} \), \( |\varphi| < \frac{\pi}{2} \), and \( f > 0 \) are:**
+
+    - **\( \theta = 0 \)**
+    - **\( \varphi = 0 \)**
+    - **\( f = Mg \)**
+
+    Therefore, the only possible equilibrium is when the booster is perfectly vertical (\( \theta = 0 \)), the force is aligned with its axis (\( \varphi = 0 \)), and the thrust exactly balances the weight of the booster (\( f = Mg \)).
+    """
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
