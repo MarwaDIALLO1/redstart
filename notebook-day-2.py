@@ -1716,6 +1716,71 @@ def _(mo):
     return
 
 
+@app.cell
+def _(A_2, B_2, np):
+    from numpy.linalg import eig
+
+    K = np.array([[0, 0, -0.0297, -0.1584]])  # (1 x 4)
+
+    # Calcul de la matrice fermée
+    A_cl = A_2 - B_2 @ K  # (4x1) x (1x4) = (4x4)
+
+    # Valeurs propres
+    eigenvalue, _ = eig(A_cl)
+
+    # Vérification de la stabilité
+    is_stable = all(np.real(eigenvalue) < 0)
+
+    # Affichage
+    print("Eigenvalues:", eigenvalue)
+    print("Stable:", is_stable)
+    return
+
+
+@app.cell
+def _(J, M, g, l, np, plt, solve_ivp):
+    D = l * g * M / J  # ≈ 3.03
+
+    # Gains from design
+    k3 = -0.0297
+    k4 = -0.1584
+
+    # Dynamics: [theta, theta_dot]
+    def dynamics(t, y):
+        theta, theta_dot = y
+        phi = -k3 * theta - k4 * theta_dot
+        theta_ddot = D * (k3 * theta + k4 * theta_dot)
+        return [theta_dot, theta_ddot]
+
+    # Initial conditions
+    theta0 = np.pi / 4
+    theta_dot0 = 0
+    y0 = [theta0, theta_dot0]
+
+    # Time span
+    t_eval = np.linspace(0, 30, 1000)
+    sol = solve_ivp(dynamics, [0, 30], y0, t_eval=t_eval)
+
+    # Compute phi over time
+    theta = sol.y[0]
+    theta_dot = sol.y[1]
+    phi = -k3 * theta - k4 * theta_dot
+
+    # Plotting
+    plt.figure(figsize=(10, 5))
+    plt.plot(sol.t, theta, label=r'$\Delta\theta(t)$')
+    plt.plot(sol.t, phi, label=r'$\Delta\phi(t)$')
+    plt.axhline(np.pi/2, color='gray', linestyle='--', alpha=0.5)
+    plt.axhline(-np.pi/2, color='gray', linestyle='--', alpha=0.5)
+    plt.xlabel('Time [s]')
+    plt.ylabel('Angle [rad]')
+    plt.title('Response of the system with designed $k_3$ and $k_4$')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -2151,6 +2216,97 @@ app._unparsable_cell(
     """,
     name="_"
 )
+
+
+@app.cell
+def _(J, M, g, l, np, solve_ivp):
+    def redstartt_solve(t_span, y0, f_phi):
+        def fun(t, state):
+            x, dx, y, dy, theta, dtheta = state
+            f, phi = f_phi(t, state)
+
+            d2x = (-f * np.sin(theta + phi)) / M
+            d2y = (f * np.cos(theta + phi)) / M - g
+            d2theta = (-l * np.sin(phi)) * f / J
+
+            return [dx, d2x, dy, d2y, dtheta, d2theta]
+
+        sol = solve_ivp(fun, t_span, y0, dense_output=True)
+        return sol
+    return
+
+
+@app.cell
+def _(J, K_oc, K_pp, g, l, np, plt, solve_ivp):
+    def simulate_nonlinear(x0, T, dt, control_law):
+        """
+        Simulates the nonlinear booster system using a given control law.
+
+        Args:
+            x0: Initial state [Δx, Δẋ, Δθ, Δθ̇]
+            T: Simulation duration (seconds)
+            dt: Time step (seconds)
+            control_law: function u(t, x) -> Δϕ(t)
+
+        Returns:
+            ts: Time array
+            xs: State array
+            us: Control inputs over time
+        """
+        def dynamics(t, x):
+            dx, dx_dot, dtheta, dtheta_dot = x
+            delta_phi = float(control_law(t, x))
+            dx_ddot = -g * (dtheta + delta_phi)
+            dtheta_ddot = - (l * g / J) * delta_phi
+            return [dx_dot, dx_ddot, dtheta_dot, dtheta_ddot]
+
+        ts = np.arange(0, T + dt, dt)
+        sol = solve_ivp(dynamics, [0, T], x0, t_eval=ts)
+        xs = sol.y.T
+        us = np.array([control_law(t, x) for t, x in zip(ts, xs)])
+        return ts, xs, us
+
+
+
+
+    def u_pp(t, x):
+        return -K_pp @ x
+
+    def u_lqr(t, x):
+        return -K_oc @ x
+    xx = [1.0, 0.0, 0.5, 0.0]
+    T = 30
+    dt = 0.05
+
+    # Simulate with both controllers
+    ts_pp, xs_pp, us_pp = simulate_nonlinear(xx, T, dt, u_pp)
+    ts_lqr, xs_lqr, us_lqr = simulate_nonlinear(xx, T, dt, u_lqr)
+
+    # Plot comparison
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+    axes[0].plot(ts_pp, xs_pp[:, 0], label="Δx - Pole Placement")
+    axes[0].plot(ts_lqr, xs_lqr[:, 0], label="Δx - LQR", linestyle='--')
+    axes[0].set_ylabel("Δx(t)")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    axes[1].plot(ts_pp, xs_pp[:, 2], label="Δθ - Pole Placement")
+    axes[1].plot(ts_lqr, xs_lqr[:, 2], label="Δθ - LQR", linestyle='--')
+    axes[1].set_ylabel("Δθ(t)")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    axes[2].plot(ts_pp, us_pp, label="Δϕ - Pole Placement")
+    axes[2].plot(ts_lqr, us_lqr, label="Δϕ - LQR", linestyle='--')
+    axes[2].set_ylabel("Δϕ(t)")
+    axes[2].set_xlabel("Time (s)")
+    axes[2].legend()
+    axes[2].grid(True)
+
+    plt.tight_layout()
+    plt.show()
+    return
 
 
 if __name__ == "__main__":
