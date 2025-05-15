@@ -1034,6 +1034,230 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    **1. Definition of Perturbations**
+
+    We introduce small variations around the equilibrium:
+
+    $$
+    \begin{aligned}
+    x &= x_{\text{eq}} + \Delta x, \\
+    y &= y_{\text{eq}} + \Delta y, \\
+    \theta &= \theta_{\text{eq}} + \Delta \theta, \\
+    \phi &= \phi_{\text{eq}} + \Delta \phi, \\
+    f &= f_{\text{eq}} + \Delta f.
+    \end{aligned}
+    $$
+
+    The perturbed accelerations are:
+
+    $$
+    \Delta \ddot{x} = \ddot{x}, \quad \Delta \ddot{y} = \ddot{y}, \quad \Delta \ddot{\theta} = \ddot{\theta}.
+    $$
+
+    **2. Linearization of the Equations**
+
+    We approximate the equations using a first-order Taylor expansion.
+
+
+    **Linearization of Trigonometric Terms**
+
+    Using a first-order Taylor expansion:
+
+    $$
+    \sin(\theta + \phi) \approx \sin(\theta_{\text{eq}} + \phi_{\text{eq}}) 
+    + \cos(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta \theta + \Delta \phi)
+    $$
+
+    $$
+    \cos(\theta + \phi) \approx \cos(\theta_{\text{eq}} + \phi_{\text{eq}}) 
+    - \sin(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta \theta + \Delta \phi)
+    $$
+
+    $$
+    \sin(\phi) \approx \sin(\phi_{\text{eq}}) + \cos(\phi_{\text{eq}})\Delta \phi
+    $$
+
+    **Equation (1): Horizontal Motion ($x$)**
+
+    $$
+    M \Delta\ddot{x} = - (f_{\text{eq}} + \Delta f) \left[ \sin(\theta_{\text{eq}} + \phi_{\text{eq}}) + \cos(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta\theta + \Delta\phi) \right]
+    $$
+
+    Neglecting second-order terms such as \( \Delta f \cdot \Delta\theta \), we obtain:
+
+    $$
+    M \, \Delta \ddot{x} \approx 
+    - f_{\text{eq}} \cos(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta \theta + \Delta \phi)
+    - \sin(\theta_{\text{eq}} + \phi_{\text{eq}}) \, \Delta f
+    $$
+
+    **Equation (2): Vertical Motion ($y$)**
+
+    $$
+    M \Delta\ddot{y} = (f_{\text{eq}} + \Delta f) \left[ \cos(\theta_{\text{eq}} + \phi_{\text{eq}}) - \sin(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta\theta + \Delta\phi) \right] - Mg
+    $$
+
+    $$
+    M \, \Delta \ddot{y} \approx 
+    - f_{\text{eq}} \sin(\theta_{\text{eq}} + \phi_{\text{eq}})(\Delta \theta + \Delta \phi)
+    + \cos(\theta_{\text{eq}} + \phi_{\text{eq}}) \, \Delta f
+    $$
+
+    **Equation (3): Rotation ($\theta$)**
+
+    $$
+    J \Delta \ddot{\theta} = - \ell (f_{\text{eq}} + \Delta f) \left[ \sin(\phi_{\text{eq}}) + \cos(\phi_{\text{eq}}) \Delta \phi \right]
+    $$
+
+    $$
+    J \, \Delta \ddot{\theta} \approx 
+    - \ell f_{\text{eq}} \cos(\phi_{\text{eq}}) \, \Delta \phi 
+    - \ell \sin(\phi_{\text{eq}}) \, \Delta f
+    $$
+
+
+
+
+    **3. Special Case: Standard Equilibrium**
+
+    If the equilibrium is:
+
+    $$
+    \theta_{\text{eq}} = 0, \quad \phi_{\text{eq}} = 0, \quad f_{\text{eq}} = Mg,
+    $$
+
+    then the equations simplify to:
+
+    $$
+    \begin{cases}
+    \Delta \ddot{x} = -g (\Delta \theta + \Delta \phi), \\
+    \Delta \ddot{y} = \dfrac{\Delta f}{M}, \\
+    \Delta \ddot{\theta} = -\dfrac{\ell g}{J} \Delta \phi.
+    \end{cases}
+    $$
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    We want to express the linearized equations in the standard form of a linear dynamic system, namely:  
+
+    \[
+    \dot{x} = A x + B u
+    \]
+
+    where:  
+    - \( x \) is the state vector,  
+    - \( A \) is the state matrix,  
+    - \( B \) is the input matrix,  
+    - \( u \) is the input vector.  
+
+
+
+    First, we introduce the error variables :  
+    \( \Delta x, \Delta \dot{x}, \Delta y, \Delta \dot{y}, \Delta \theta, \Delta \dot{\theta} \).  
+    The state vector is therefore:  
+
+    \[
+    x = 
+    \begin{bmatrix}
+    \Delta x \\
+    \Delta \dot{x} \\
+    \Delta y \\
+    \Delta \dot{y} \\
+    \Delta \theta \\
+    \Delta \dot{\theta}
+    \end{bmatrix}
+    \]
+
+    **Inputs:**  
+    The perturbations of the inputs are:  
+    \( \Delta f \) and \( \Delta \varphi \).  
+    The input vector is:  
+
+    \[
+    u = 
+    \begin{bmatrix}
+    \Delta f \\
+    \Delta \varphi
+    \end{bmatrix}
+    \]
+
+
+
+    **Linearized differential equations:**  
+    From the previous question :
+
+    \[
+    \begin{aligned}
+    \Delta \ddot{x} &= -g(\Delta \theta + \Delta \varphi), \\
+    \Delta \ddot{y} &= \frac{1}{M} \Delta f, \\
+    \Delta \ddot{\theta} &= -\frac{g}{\ell J} \Delta \varphi.
+    \end{aligned}
+    \]
+
+
+
+    **Second-order canonical form:**  
+    For each error variable, we introduce an auxiliary variable corresponding to its first derivative. For example:  
+    \( \Delta \dot{x} = \Delta v_x \), \( \Delta \dot{y} = \Delta v_y \), \( \Delta \dot{\theta} = \Delta \omega \).  
+    The equations then become:
+
+    \[
+    \begin{aligned}
+    \Delta \dot{x} &= \Delta v_x \\
+    \Delta \dot{v}_x &= -g(\Delta \theta + \Delta \varphi) \\
+    \Delta \dot{y} &= \Delta v_y \\
+    \Delta \dot{v}_y &= \frac{1}{M} \Delta f \\
+    \Delta \dot{\theta} &= \Delta \omega \\
+    \Delta \dot{\omega} &= -\frac{g \cdot \ell}{J} \Delta \varphi
+    \end{aligned}
+    \]
+
+
+    **State matrix A:**  
+    Matrix A is constructed by aligning the coefficients of the state variables in the equations above. It has the form:
+
+    \[
+    A =
+    \begin{bmatrix}
+    0 & 1 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & -g & 0 \\
+    0 & 0 & 0 & 1 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 1 \\
+    0 & 0 & 0 & 0 & 0 & 0
+    \end{bmatrix}
+    \]
+
+
+    **Input matrix B:**  
+    Matrix B contains the coefficients of the inputs \( \Delta f \) and \( \Delta \varphi \). It has the form:
+
+    \[
+    B =
+    \begin{bmatrix}
+    0 & 0 \\
+    0 & -g \\
+    0 & 0 \\
+    \frac{1}{M} & 0 \\
+    0 & 0 \\
+    0 & -\frac{g \ell}{J}
+    \end{bmatrix}
+    \]
+    """
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
