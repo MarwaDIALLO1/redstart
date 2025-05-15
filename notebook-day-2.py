@@ -1021,19 +1021,6 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(
-        r"""
-    ## 🧩 Standard Form
-
-    What are the matrices $A$ and $B$ associated to this linear model in standard form?
-    Define the corresponding NumPy arrays `A` and `B`.
-    """
-    )
-    return
-
-
 @app.cell
 def _(mo):
     mo.md(
@@ -1139,6 +1126,19 @@ def _(mo):
     \Delta \ddot{\theta} = -\dfrac{\ell g}{J} \Delta \phi.
     \end{cases}
     $$
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## 🧩 Standard Form
+
+    What are the matrices $A$ and $B$ associated to this linear model in standard form?
+    Define the corresponding NumPy arrays `A` and `B`.
     """
     )
     return
@@ -1271,7 +1271,16 @@ def _(mo):
 
 
 @app.cell
-def _(A):
+def _(g, np):
+    A = np.array([
+        [0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, -g, 0],
+        [0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0]
+    ])
+
     from scipy import linalg
     eigenvalues, _ = linalg.eig(A)
     eigenvalues
