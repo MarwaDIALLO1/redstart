@@ -1618,6 +1618,104 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    We are given the control law:
+
+    \[
+    \Delta\phi(t) = -K \cdot 
+    \begin{bmatrix}
+    \Delta x(t) \\
+    \dot{\Delta x}(t) \\
+    \Delta\theta(t) \\
+    \dot{\Delta\theta}(t)
+    \end{bmatrix}, \quad K = 
+    \begin{bmatrix}
+    0 \\
+    0 \\
+    k_3 \\
+    k_4
+    \end{bmatrix}
+    \in \mathbb{R}^{4 \times 1}
+    \]
+
+    We aim to determine \(k_3\) and \(k_4\) such that \( \Delta\theta(0) = \frac{\pi}{4} \), \(\dot{\Delta\theta}(0) = 0\), and \(\Delta x(0) = \dot{\Delta x}(0) = 0\).
+
+    The physical system is governed by the second-order dynamics:
+
+    \[
+    \ddot{\Delta\theta}(t) = -\frac{l g M}{J} \Delta\phi(t)
+    \]
+
+    By injecting the control law:
+
+    \[
+    \Delta\phi(t) = -k_3 \Delta\theta(t) - k_4 \dot{\Delta\theta}(t)
+    \Rightarrow 
+    \ddot{\Delta\theta}(t) = \frac{l g M}{J} (k_3 \Delta\theta + k_4 \dot{\Delta\theta})
+    \]
+
+    This yields a standard second-order linear differential equation:
+
+    \[
+    \ddot{\Delta\theta}(t) + a_1 \dot{\Delta\theta}(t) + a_0 \Delta\theta(t) = 0
+    \]
+
+    With coefficients:
+
+    \[
+    a_1 = -\frac{l g M}{J} k_4, \quad a_0 = -\frac{l g M}{J} k_3
+    \]
+
+    To design a well-behaved second-order system, we match the form:
+
+    \[
+    \ddot{\theta} + 2\zeta\omega_n \dot{\theta} + \omega_n^2 \theta = 0
+    \]
+
+    **Desired Behavior:**
+    - Settling time \( T_s \leq 20 \) seconds  
+    - Therefore, choose \( \omega_n = 0.3 \) (so that \( T_s \approx \frac{4}{\zeta \omega_n} \leq 20 \))
+    - Damping ratio \( \zeta = 0.8 \)
+ 
+    $$
+    a_1 = 2\zeta\omega_n = 0.48
+    $$
+
+    $$
+    a_0 = \omega_n^2 = 0.09
+    $$
+
+    **System Parameters:**
+    - \( l = 1 \)
+    - \( g = 1 \)
+    - \( M = 1 \)
+    - \( J = 0.33 \)
+    - So, \( \frac{l g M}{J} = \frac{1}{0.33} \approx 3.03 \)
+
+    **Compute gains:**
+
+    $$
+    k_4 = -\frac{J}{l g M} a_1 \approx -0.33 \cdot 0.48 = -0.1584
+    $$
+
+    $$
+    k_3 = -\frac{J}{l g M} a_0 \approx -0.33 \cdot 0.09 = -0.0297
+    $$
+
+
+    We now simulate the system to verify constraints:
+
+    - \( |\Delta\theta(t)| < \frac{\pi}{2} \)
+    - \( |\Delta\phi(t)| < \frac{\pi}{2} \)
+    - \( \Delta\theta(t) \rightarrow 0 \) in about 20 seconds
+    """
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
