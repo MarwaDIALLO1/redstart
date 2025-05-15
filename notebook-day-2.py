@@ -59,8 +59,10 @@ def _(mo):
 def _():
     import scipy
     import scipy.integrate as sci
-
+    from scipy.linalg import solve_continuous_are 
+    from scipy.integrate import solve_ivp
     import matplotlib as mpl
+    from numpy.linalg import inv
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation, FFMpegWriter
 
@@ -71,7 +73,18 @@ def _():
     import autograd.numpy as np
     import autograd.numpy.linalg as la
     from autograd import isinstance, tuple
-    return FFMpegWriter, FuncAnimation, mpl, np, plt, scipy, tqdm
+    return (
+        FFMpegWriter,
+        FuncAnimation,
+        inv,
+        mpl,
+        np,
+        plt,
+        scipy,
+        solve_continuous_are,
+        solve_ivp,
+        tqdm,
+    )
 
 
 @app.cell(hide_code=True)
@@ -1460,8 +1473,7 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    ## Special Case: Free Fall ($\phi(t) = 0$, $f = 0$)
-
+    **Special Case: Free Fall ($\phi(t) = 0$, $f = 0$)**
     In this case:
     $\Delta \phi = 0$,
     $\Delta f = -Mg$ (since $f_{\text{eq}} = Mg$ and $f = 0$).
@@ -1477,16 +1489,16 @@ def _(mo):
     $$
 
 
-    ## Initial Conditions
+    **Initial Conditions**
 
     - $x(0) = 0$, $\dot{x}(0) = 0$
     - $y(0) = 10$, $\dot{y}(0) = 0$
     - $\theta(0) = \frac{\pi}{4}$, $\dot{\theta}(0) = 0$
 
 
-    ## Analytical Solutions
+    **Analytical Solutions**
 
-    ### Angle $\theta(t)$
+    **Angle $\theta(t)$**
 
     $$
     \ddot{\theta} = 0 \Rightarrow \dot{\theta} = \dot{\theta}(0) =0 \Rightarrow\theta(t) = \theta(0) = \frac{\pi}{4}
@@ -1494,7 +1506,7 @@ def _(mo):
 
     *$\theta(t)$ remains constant.*
 
-    ### Vertical position $y(t)$
+    **Vertical position $y(t)$**
 
     $$
     \ddot{y} = -g \Rightarrow \dot{y}(t) = -g t ,\quad y(t) = -\frac{1}{2} g t^2 + y_0
@@ -1533,6 +1545,32 @@ def _(g, np, plt):
     plt.grid(True)
     plt.legend()
     return
+
+
+app._unparsable_cell(
+    r"""
+    **Left Plot: Vertical Motion \( y(t) \)**
+
+    - The plot shows a parabolic decrease in the vertical position \( y(t) \).
+
+    - This indicates that the system is falling freely with no vertical thrust or corrective force applied.
+
+
+
+    **Right Plot: Orientation \( \theta(t) \)**
+
+    - The orientation \( \theta(t) \) remains almost constant at approximately \( 0.78 \) radians throughout the simulation.
+
+    - The system starts close to its equilibrium angle \( \theta_{\text{eq}} \),
+
+
+
+    **Conclusion**
+
+    - The object exhibits free-fall vertical motion while maintaining a stable orientation.
+    """,
+    name="_"
+)
 
 
 @app.cell(hide_code=True)
@@ -1622,6 +1660,187 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    The reduced model of the system is given by: 
+
+    \[
+    \dot{x} = A x + B \Delta \phi
+    \]
+
+    where:
+
+    \[
+    x =
+    \begin{bmatrix}
+    \Delta x, \Delta \dot{x}, \Delta \theta, \Delta \dot{\theta}
+    \end{bmatrix}^T
+    \]
+
+    \[
+    A =
+    \begin{bmatrix}
+    0 & 1 & 0 & 0 \\
+    0 & 0 & -g & 0 \\
+    0 & 0 & 0 & 1 \\
+    0 & 0 & 0 & 0
+    \end{bmatrix}
+    ,\quad
+    B =
+    \begin{bmatrix}
+    0 \\
+    - g \\
+    0 \\
+    - \frac{Mg\ell}{J}
+    \end{bmatrix}
+    \]
+
+    We want:
+
+    - Asymptotic stability → all closed-loop poles must have a negative real part.
+    - Short settling time → choose poles far to the left in the complex plane, ideally with fast dynamics but without strong oscillations (avoid complex poles with high imaginary parts).
+    - Reduction of Δx(t) → 0 in less than 20 seconds 
+
+
+    **Pole Selection**
+
+    We choose negative real poles to insure the asymptotic stability :
+
+    \[
+    p_1 = -0.5,\quad p_2 = -1.0,\quad p_3 = -1.5,\quad p_4 = -2.0
+    \]
+
+    These poles ensure relatively fast convergence to zero (settling time less than 20s).
+
+
+    We can obtain:
+
+    \[
+    K_{pp} = 
+    \begin{bmatrix}
+    0.5 \\
+    2.0833 \\
+    -3.0833 \\
+    -2.3611
+    \end{bmatrix}
+    \]
+
+    So:
+
+    \[
+    \Delta \phi(t) = -0.5 \cdot \Delta x(t) - 2.0833 \cdot \Delta \dot{x}(t) + 3.0833 \cdot \Delta \theta(t) + 2.3611 \cdot \Delta \dot{\theta}(t)
+    \]
+
+    Once the gain \( K_{pp} \) is found, we simulate the closed-loop system:
+
+    \[
+    \dot{x} = (A - B K_{pp}) x
+    \]
+
+    The simulation provided by the code below verify that:
+
+    - The states \( \Delta x(t), \Delta \theta(t) \) converge to 0,
+    - The settling time of \( \Delta x(t) \) is well under 20 seconds,
+    - The control \( \Delta \phi(t) \) remains bounded.
+
+
+    """
+    )
+    return
+
+
+@app.cell
+def _(J, M, g, l, np):
+    from scipy.signal import place_poles
+    # Matrices du système
+    A_2 = np.array([
+        [0, 1, 0, 0],
+        [0, 0, -g, 0],
+        [0, 0, 0, 1],
+        [0, 0, 0, 0]
+    ])
+
+    B_2 = np.array([
+        [0],
+        [-g],
+        [0],
+        [-M*g*l/J]
+    ])
+
+    # Pôles choisies
+    poles = [-0.5, -1.0, -1.5, -2.0]
+
+    # Calcul du gain K
+    K_pp = place_poles(A_2, B_2, poles).gain_matrix.flatten()
+
+    print("Matrice de gain K_pp :")
+    print(K_pp)
+    return A_2, B_2, K_pp
+
+
+@app.cell
+def _(A_2, B_2, K_pp, np, plt, solve_ivp):
+    # Matrice du système en boucle fermée
+    A_2_cl = A_2 - B_2 @ K_pp[np.newaxis, :]  # Shape correcte de K_pp
+
+    # Fonction d'équation différentielle
+    def closed_loop_system(t, x):
+        return A_2_cl @ x
+
+    # Conditions initiales
+    x0 = np.array([1.0, 0.0, 0.5, 0.0])  # [Δx, Δẋ, Δθ, Δθ̇]
+
+    # Intervalle de temps
+    t_span = [0, 30]  # Simuler sur 30 secondes
+    t_eval = np.linspace(t_span[0], t_span[1], 1000)
+
+    # Résolution de l'EDO
+    sol = solve_ivp(closed_loop_system, t_span, x0, t_eval=t_eval)
+
+    # Extraction des résultats
+    e = sol.t
+    x = sol.y
+
+    #t_2Calcul de la commande Δϕ(e) = -K_pp ⋅ x(e)
+    u = -K_pp @ x
+
+    # Tracé des états
+    plt.figure(figsize=(14, 10))
+
+    # Δx(e)
+    plt.subplot(2, 2, 1)
+    plt.plot(e, x[0], label=r'$\Delta x(e)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.title(r'$\Delta x(e)$')
+    plt.xlabel('Time (s)')
+    plt.ylabel(r'$\Delta x$')
+    plt.grid(True)
+
+
+    # Δθ(e)
+    plt.subplot(2, 2, 3)
+    plt.plot(e, x[2], 'r', label=r'$\Delta \theta(t)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.title(r'$\Delta \theta(t)$')
+    plt.xlabel('Time (s)')
+    plt.ylabel(r'$\Delta \theta$')
+    plt.grid(True)
+
+    # Tracé de la commande Δϕ(t)
+    plt.figure(figsize=(10, 4))
+    plt.plot(e, u, label=r'$\Delta \phi(t)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.title(r'$\Delta \phi(t)$')
+    plt.xlabel('Time (s)')
+    plt.ylabel(r'$\Delta \phi$')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -1636,6 +1855,185 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    By the  LQR method we aim to minimize a quadratic cost function of the form:
+
+    \[
+    J = \int_0^{\infty} \left( x^T Q x + \Delta \phi^T R \Delta \phi \right) dt
+    \]
+
+    where:
+
+    - \( x = \begin{bmatrix} \Delta x,\ \Delta \dot{x},\ \Delta \theta,\ \Delta \dot{\theta} \end{bmatrix}^T \) is the state vector
+    - \( Q \in \mathbb{R}^{4 \times 4} \) penalizes state deviations 
+    - \( R > 0 \) penalizes the control effort
+
+
+    The optimal control law is given by:
+
+    \[
+    \Delta \phi = -K_{oc} \cdot x
+    \quad \text{with} \quad
+    K_{oc} = R^{-1} B^T P
+    \]
+
+    where \( P \) is the unique, positive semi-definite solution of the algebraic Riccati equation:
+
+    \[
+    A^T P + P A - P B R^{-1} B^T P + Q = 0
+    \]
+
+
+
+    We aim to design an LQR controller such that:
+
+    - \( \Delta x(t) \rightarrow 0 \) in about 20 seconds  
+    - The system is asymptotically stable
+    We Chosse for exemple:
+
+    \[
+    Q = \text{diag}(1, 0.1, 0.5, 0.05), \quad R = 1
+    \]
+
+    According to this choices , we  calculate K_{oc}, using the code below, and we get :
+    \[
+    K_{oc} = 
+    \begin{bmatrix}
+    1 \\
+    2.41273157 \\
+    -2.86063682 \\
+    -2.12559926
+    \end{bmatrix}
+    \]
+
+
+
+    We beleive that this Choice Ensures the Desired Behavior, because : 
+
+    1. \( \Delta x(t) \rightarrow 0 \) in ~20 seconds and \( \Delta \theta(t) \rightarrow 0 \) in ~20 seconds
+
+    - The high value \( q_x = 1 \) strongly penalizes deviations in horizontal position.
+    - Increasing the value of \( q_{\dot{\theta}} \) in the matrix \( Q \) helps dampen oscillations in \( \Delta \theta(t) \).
+    - \( q_{\dot{\theta}} \) = 0.5 penalizes the angular velocity \( \Delta \dot{\theta}(t) \).
+
+
+    2. Asymptotic Stability of the System
+
+    - The LQR formulation guarantees asymptotic stability, provided that the pair \( (A, B) \) is controllable.
+    - With \( Q \succeq 0 \) (positive semi-definite) and \( R > 0 \), the Riccati equation admits a solution.
+    - The resulting controller stabilizes the system.
+    """
+    )
+    return
+
+
+@app.cell
+def _(J, g, inv, l, np, solve_continuous_are):
+    # Matrices d'état du système linéarisé
+    A_3 = np.array([
+        [0, 1, 0, 0],
+        [0, 0, -g, 0],
+        [0, 0, 0, 1],
+        [0, 0, 0, 0]
+    ])
+
+    B_3 = np.array([
+        [0],
+        [-g],
+        [0],
+        [-l * g / J]
+    ])
+
+    # Pondérations pour LQR
+    QQ = np.diag([1.0,   # Δx
+                 0.1,   # Δx_dot
+                 0.5,   # Δθ
+                 0.05]) # Δθ_dot
+
+    N = np.array([[1]])
+
+    P= solve_continuous_are(A_3,B_3,QQ,N)
+    K_oc = inv(N) @ B_3.T @ P
+    K_oc
+
+    return (K_oc,)
+
+
+@app.cell
+def _(J, K_oc, g, l, np, plt):
+    from scipy.integrate import odeint
+    # Fonction dynamique en boucle fermée
+    def system_dynamics(X, f):
+        dx, dx_dot, dtheta, dtheta_dot = X
+        delta_phi = float(-K_oc @ X)  # Assure un scalaire
+        dXdt = [
+            dx_dot,
+            -g * (dtheta + delta_phi),
+            dtheta_dot,
+            - (l * g / J) * delta_phi
+        ]
+        return dXdt
+
+    # Conditions initiales
+    X0 = [0, 0, np.pi / 4, 0]  # Déviation initiale d’angle
+
+    # Intégration temporelle
+    f = np.linspace(0, 30, 1000)
+    solt = odeint(system_dynamics, X0, f)
+
+    # Extraction des résultats
+    dx = solt[:, 0]
+    dx_dot = solt[:, 1]
+    dtheta = solt[:, 2]
+    dtheta_dot = solt[:, 3]
+    dphi = (-K_oc @ solt.T).flatten()  # Convertir en vecteur 1D
+
+    # Vérification de convergence de Δx(f)
+    tolerance = 0.01  # Seuil de convergence
+    t_95 = None
+    for i in range(len(f)):
+        if abs(dx[i]) < tolerance:
+            t_95 = f[i]
+            break
+
+    if t_95 is not None:
+        print(f"\nΔx(f) atteint {tolerance} à f = {t_95:.2f} secondes")
+    else:
+        print("\nΔx(f) ne converge pas suffisamment vite.")
+
+    # Graphiques
+    plt.figure(figsize=(14, 5))
+
+    plt.subplot(1, 3, 1)
+    plt.plot(f, dx, label=r'$\Delta x(f)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.xlabel('Temps (s)')
+    plt.ylabel(r'$\Delta x(f)$')
+    plt.title(r'$\Delta x(f)$ – Position horizontale')
+    plt.grid(True)
+
+    plt.subplot(1, 3, 2)
+    plt.plot(f, dtheta, 'r', label=r'$\Delta \theta(f)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.xlabel('Temps (s)')
+    plt.ylabel(r'$\Delta \theta(f)$')
+    plt.title(r'$\Delta \theta(f)$ – Orientation')
+    plt.grid(True)
+
+    plt.subplot(1, 3, 3)
+    plt.plot(f, dphi, 'g', label=r'$\Delta \phi(f)$')
+    plt.axhline(0, color='black', linestyle='--')
+    plt.xlabel('Temps (s)')
+    plt.ylabel(r'$\Delta \phi(f)$')
+    plt.title(r'$\Delta \phi(f)$ – Commande appliquée')
+    plt.grid(True)
+    plt.show()
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
@@ -1646,6 +2044,15 @@ def _(mo):
     """
     )
     return
+
+
+app._unparsable_cell(
+    r"""
+    The previous parameters verify the required constraints 
+    Above we have ploted the required simulation
+    """,
+    name="_"
+)
 
 
 if __name__ == "__main__":
