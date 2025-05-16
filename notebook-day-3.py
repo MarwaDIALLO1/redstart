@@ -6,6 +6,11 @@ app = marimo.App()
 
 @app.cell
 def _():
+    return
+
+
+@app.cell
+def _():
     import marimo as mo
     return (mo,)
 
@@ -1682,6 +1687,11 @@ def _(mo):
 
 
 @app.cell
+def _():
+    return
+
+
+@app.cell
 def _(mo):
     mo.center(mo.image(src="public/images/drawing.jpg"))
     return
@@ -1691,46 +1701,42 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    *Understanding the Components*
+    The vector :
 
-    - *Input*: A point \((x, y)\) in the plane  
-    - *Output*: A new point \((x', y')\)
+    \[
+    \mathbf{h} = \begin{bmatrix} h_x \\ h_y \end{bmatrix}
+    \]  
 
-    The transformation is:
+    represents the coordinates of a specific point on the booster in the global (fixed) frame. More precisely, this point is located one-third of the total length of the booster from its base, i.e., at the center of mass of the booster.
 
-    - \( x' = x - \dfrac{3}{\ell} \sin(\theta) \)
-    - \( y' = y + \dfrac{3}{\ell} \cos(\theta) \)
+    **Here is why**:
 
+    The booster is modeled as a rigid rod of total length \(2\ell\), with mass uniformly distributed.
 
-    **Geometrical Interpretation**
+    The center of mass of a rigid, homogeneous object is located at its geometric midpoint. For a vertical rod oriented at an angle \(\theta\), the center of mass is therefore halfway between its two ends.
 
-    This transformation is a **translation** of the point \((x, y)\) by the vector:
+    If the coordinates of the center of mass are \( (x, y) \), then:
 
-    $$
-    \vec{v} = 
-    \begin{bmatrix}
-    -\dfrac{3}{\ell} \sin(\theta) \\
-    \dfrac{3}{\ell} \cos(\theta)
-    \end{bmatrix} =
-    \begin{bmatrix}
-    \dfrac{3}{\ell} \cos(\theta + \dfrac{\pi}{2}) \\
-    \dfrac{3}{\ell} \sin(\theta + \dfrac{\pi}{2})
-    \end{bmatrix}
-    $$
+    - The base of the booster (lower end) has coordinates:
+     $(x - \ell \sin\theta,\quad y + \ell \cos\theta)$
 
-    - *Magnitude*: \( \dfrac{3}{\ell} \)
-    - *Direction*: Perpendicular to angle \( \theta \), i.e., in the direction \( \theta + \dfrac{\pi}{2} \)
+    - The top of the booster (upper end) has coordinates:
+      $(x + \ell \sin\theta,\quad y - \ell \cos\theta)$
 
 
+    The point represented by \(\mathbf{h}\) is given by: 
 
-    *Visualizing the Transformation*
+    \[
+    \mathbf{h} = \begin{bmatrix} x - \frac{\ell}{3} \sin\theta \\ y + \frac{\ell}{3} \cos\theta \end{bmatrix}
+    \]
 
-    1. *Original Point*: Start from the point \( (x, y) \)
-    2. *Translation Vector*:
-       - Originates at \( (x, y) \)
-       - Has a length of \( \dfrac{3}{\ell} \)
-       - Points in direction \( \theta + \dfrac{\pi}{2} \)
-    3. *New Point*: The resulting point \( (x', y') \) is the endpoint of the vector starting at \( (x, y) \)
+    This point is thus located at a distance \(\ell\)/3 above the base, along the longitudinal axis of the booster. This roughly corresponds to the lower third of the booster, or a point intermediate between the base and the center of mass.
+
+
+    The vector \(\mathbf{h}\) represents the coordinates of a point located \(\ell\) / 3 above the base of the booster, aligned with its axis, in the global frame.
+
+    This point can be used to control the position and orientation of the booster, as it is directly linked to both the translational motions \((x, y)\) and the rotational motion \(\theta\) of the vehicle.
+
     """
     )
     return
@@ -1745,6 +1751,157 @@ def _(mo):
     Compute $\dot{h}$ as a function of $\dot{x}$, $\dot{y}$, $\theta$ and $\dot{\theta}$ (and constants) and then $\ddot{h}$ as a function of $\theta$ and $z$ (and constants) when the auxiliary system is plugged in the booster.
     """
     )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    We are given the vector $h$:
+
+    $$
+    h = \begin{bmatrix} x - \frac{\ell}{3} \sin \theta \\ y + \frac{\ell}{3} \cos \theta \end{bmatrix}
+    $$
+
+    1. **First derivative** $\boldsymbol{\dot{h}}$  
+    Differentiating $h$ with respect to time:
+
+    $$
+    \dot{h} = \begin{bmatrix}
+    \dot{x} - \frac{\ell}{3} \cos \theta \cdot \dot{\theta} \\
+    \dot{y} - \frac{\ell}{3} \sin \theta \cdot \dot{\theta}
+    \end{bmatrix}
+    $$
+
+
+    2.** Second derivative** $\boldsymbol{\ddot{h}}$
+
+    Differentiating again:
+
+    $$
+    \ddot{h} =
+    \begin{bmatrix}
+    \ddot{x} + \dfrac{\ell}{3} \sin\theta \cdot \dot{\theta}^2 - \dfrac{\ell}{3} \cos\theta \cdot \ddot{\theta} \\
+    \ddot{y} - \dfrac{\ell}{3} \cos\theta \cdot \dot{\theta}^2 - \dfrac{\ell}{3} \sin\theta \cdot \ddot{\theta}
+    \end{bmatrix}
+    $$
+
+
+    *The forces are given by a rotation of a local vector:*
+
+    $$
+    \begin{bmatrix} f_x \\ f_y \end{bmatrix}
+    = R\left(\theta + \frac{\pi}{2}\right)
+    \begin{bmatrix}
+    z + \dfrac{M \ell \dot{\theta}^2}{3} \\
+    \dfrac{M \ell v_2}{3 z}
+    \end{bmatrix}
+    $$
+
+    With the rotation matrix:
+
+    $$
+    R\left( \theta + \frac{\pi}{2} \right) =
+    \begin{bmatrix}
+    -\sin \theta & -\cos \theta \\
+    \cos \theta & -\sin \theta
+    \end{bmatrix}
+    $$
+
+    Thus the forces become:
+
+    $$
+    \begin{aligned}
+    f_x &= -\left(z + \frac{M \ell \dot{\theta}^2}{3} \right)\sin \theta - \frac{M \ell v_2}{3 z} \cos \theta \\
+    f_y &= \left(z + \frac{M \ell \dot{\theta}^2}{3} \right)\cos \theta - \frac{M \ell v_2}{3 z} \sin \theta
+    \end{aligned}
+    $$
+
+
+    *From the equations of motion:*
+
+
+    $$
+    \begin{aligned}
+    \ddot{x} &= \frac{f_x}{M} \\
+    \ddot{y} &= \frac{f_y}{M} - g
+    \end{aligned}
+    $$
+
+    Substitution gives:
+
+    $$
+    \begin{aligned}
+    \ddot{x} &= -\left( \frac{z}{M} + \frac{\ell \dot{\theta}^2}{3} \right) \sin \theta - \frac{\ell v_2}{3 z} \cos \theta \\
+    \ddot{y} &= \left( \frac{z}{M} + \frac{\ell \dot{\theta}^2}{3} \right) \cos \theta - \frac{\ell v_2}{3 z} \sin \theta - g
+    \end{aligned}
+    $$
+
+    *Expression for*  $\ddot{\theta}$
+
+    The moment of inertia is given by:
+
+    $$
+    J = \frac{M \ell^2}{3}
+    $$
+
+    The generalized force is:
+
+    $$
+    f_{x_1} = f_x \cos\theta + f_y \sin\theta = -\frac{M \ell v_2}{3 z}
+    $$
+
+    Thus:
+
+    $$
+    \ddot{\theta} = \frac{\ell}{J} f_{x_1} = -\frac{v_2}{z}
+    $$
+
+    *Substitution into* $\ddot{h}$
+
+    Returning to the expression of $\ddot{h}$:
+
+    $$
+    \ddot{h} =
+    \begin{bmatrix}
+    \ddot{x} + \dfrac{\ell}{3} \sin\theta \cdot \dot{\theta}^2 - \dfrac{\ell}{3} \cos\theta \cdot \ddot{\theta} \\
+    \ddot{y} - \dfrac{\ell}{3} \cos\theta \cdot \dot{\theta}^2 - \dfrac{\ell}{3} \sin\theta \cdot \ddot{\theta}
+    \end{bmatrix}
+    $$
+
+    Substituting $\ddot{x}, \ddot{y}, \ddot{\theta}$ with their expressions:
+
+    #### Component 1 (in $x$):
+
+    $$
+    \ddot{h}_1 = -\frac{z}{M} \sin \theta
+    $$
+
+    #### Component 2 (in $y$):
+
+    $$
+    \ddot{h}_2 = \frac{z}{M} \cos \theta - g
+    $$
+
+    ###  Final expression for $\ddot{h}$
+
+    $$
+    \boxed{
+    \ddot{h} =
+    \begin{bmatrix}
+    -\dfrac{z}{M} \sin \theta \\
+    \dfrac{z}{M} \cos \theta - g
+    \end{bmatrix}
+    }
+    $$
+    """
+    )
+    return
+
+
+@app.cell
+def _():
     return
 
 
