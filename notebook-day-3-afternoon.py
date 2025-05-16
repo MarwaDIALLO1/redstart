@@ -2204,78 +2204,84 @@ def _(mo):
 
 
 @app.cell
-def _(np):
+def _(M, T, l, np):
     from scipy.interpolate import CubicSpline
-
-    def compute(
-        x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
-        x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf, tf
-    ):
-        # Appel de T pour obtenir les états initiaux dans l'espace h
-        from T import T  # Remplacez par votre fonction T
-        from T_inv import T_inv  # Et aussi T_inv
-
+    def compute(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
+                x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf, tf):
         h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0 = T(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0)
         h_xf, h_yf, dh_xf, dh_yf, d2h_xf, d2h_yf, d3h_xf, d3h_yf = T(x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf)
 
-        # Interpolation cubique avec conditions aux limites sur h, ḣ, ḧ, ḧ̇
-        h_x_spline = CubicSpline([0, tf], [h_x0, h_xf], bc_type=((2, d2h_x0), (2, d2h_xf)))
-        h_y_spline = CubicSpline([0, tf], [h_y0, h_yf], bc_type=((2, d2h_y0), (2, d2h_yf)))
+        # Interpolation des états avec splines cubiques
+        splines = {
+            'x': CubicSpline([0, tf], [x_0, x_tf], bc_type=((1, dx_0), (1, dx_tf))),
+            'y': CubicSpline([0, tf], [y_0, y_tf], bc_type=((1, dy_0), (1, dy_tf))),
+            'theta': CubicSpline([0, tf], [theta_0, theta_tf], bc_type=((1, dtheta_0), (1, dtheta_tf))),
+            'z': CubicSpline([0, tf], [z_0, z_tf], bc_type=((1, dz_0), (1, dz_tf))),
+            'h_x_spline' : CubicSpline([0, tf], [h_x0, h_xf], bc_type=((2, d2h_x0), (2, d2h_xf))),
+            'h_y_spline' : CubicSpline([0, tf], [h_y0, h_yf], bc_type=((2, d2h_y0), (2, d2h_yf)))
+
+        
+        }
 
         def fun(t):
-            # Calcul de h(t) et ses dérivées
-            h_x = h_x_spline(t)
-            h_y = h_y_spline(t)
-            dh_x = h_x_spline.derivative(1)(t)
-            dh_y = h_y_spline.derivative(1)(t)
-            d2h_x = h_x_spline.derivative(2)(t)
-            d2h_y = h_y_spline.derivative(2)(t)
-            d3h_x = h_x_spline.derivative(3)(t)
-            d3h_y = h_y_spline.derivative(3)(t)
+            # États interpolés
+            x = splines['x'](t)
+            dx = splines['x'].derivative(1)(t)
+            y = splines['y'](t)
+            dy = splines['y'].derivative(1)(t)
+            theta = splines['theta'](t)
+            dtheta = splines['theta'].derivative(1)(t)
+            z = splines['z'](t)
+            dz = splines['z'].derivative(1)(t)
+            h_x = splines['h_x_spline'](t)
+            h_y = splines['h_y_spline'](t)
+            dh_x = splines['h_x_spline'].derivative(1)(t)
+            dh_y = splines['h_y_spline'].derivative(1)(t)
+            d2h_x = splines['h_x_spline'].derivative(2)(t)
+            d2h_y = splines['h_y_spline'].derivative(2)(t)
+            d3h_x = splines['h_x_spline'].derivative(3)(t)
+            d3h_y = splines['h_y_spline'].derivative(3)(t)
 
-            # Revenir à l'état physique via T_inv
-            x, dx, y, dy, theta, dtheta, z, dz = T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y)
+        
+            # Dérivées temporelles
+            d4h_x = splines['h_x_spline'].derivative(4)(t)
+            d4h_y =splines['h_y_spline'].derivative(4)(t)
 
-            # Calcul de la commande f, phi à partir de l'état reconstruit
-            # Matrice de rotation R(pi/2 - theta)
-            angle_pi_half = np.pi / 2 - theta
+        
+            u = np.array([d4h_x, d4h_y])
+        
+            # Matrice de rotation R(π/2 - θ)
+            angle_1 = np.pi/2 - theta
             R = np.array([
-                [np.cos(angle_pi_half), -np.sin(angle_pi_half)],
-                [np.sin(angle_pi_half), np.cos(angle_pi_half)]
+                [np.cos(angle_1), -np.sin(angle_1)],
+                [np.sin(angle_1),  np.cos(angle_1)]
             ])
-
+        
             # Terme dynamique
             dynamic_term = np.array([
                 dtheta**2 * z,
                 -2 * dtheta * dz
             ])
-
-            # Commande u = h^(4)
-            d4h_x = h_x_spline.derivative(4)(t)
-            d4h_y = h_y_spline.derivative(4)(t)
-            u = np.array([d4h_x, d4h_y])
-
-            # Calcul de v
-            M = 1.0  # Remplacer par le bon M
+        
+            # Calcul final de v
             v = M * R @ u + dynamic_term
-
-            # Angle de rotation Theta - pi/2
-            angle_theta_phi = theta - np.pi / 2
-            R2 = np.array([
-                [np.cos(angle_theta_phi), -np.sin(angle_theta_phi)],
-                [np.sin(angle_theta_phi), np.cos(angle_theta_phi)]
+        
+            # Calcul de f_x et f_y
+            angle_2 = theta - np.pi/2
+            rotation_matrix_2 = np.array([
+                [np.cos(angle_2), -np.sin(angle_2)],
+                [np.sin(angle_2),  np.cos(angle_2)]
             ])
+        
+            term_1 = z - (M * l * dtheta**2) / 3
+            term_2 = (M * l * v[1]) / (3 * z)
+            fx_fy = rotation_matrix_2 @ np.array([term_1, term_2])  
+        
+            f = np.sqrt(fx_fy[0]**2 + fx_fy[1]**2)  # Norme de la force
+            phi = np.arctan2(fx_fy[1], - fx_fy[0]) - theta - np.pi /2   # Angle de la force
 
-            # Termes de commande finale
-            term1 = z - (M * 1 * dtheta**2) / 3
-            term2 = (M * 1 * v[1]) / (3 * z) if z != 0 else 0.0
-
-            fx_fy = R2 @ np.array([term1, term2])
-            f = np.linalg.norm(fx_fy)
-            phi = np.arctan2(fx_fy[1], fx_fy[0]) - angle_theta_phi
-
-            return (x, dx, y, dy, theta, dtheta, z, dz, f, phi)
-
+            return [x, dx, y, dy, theta, dtheta, z, dz, f, phi]
+ 
         return fun
     return (compute,)
 
