@@ -1681,6 +1681,61 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.center(mo.image(src="public/images/drawing.jpg"))
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    *Understanding the Components*
+
+    - *Input*: A point \((x, y)\) in the plane  
+    - *Output*: A new point \((x', y')\)
+
+    The transformation is:
+
+    - \( x' = x - \dfrac{3}{\ell} \sin(\theta) \)
+    - \( y' = y + \dfrac{3}{\ell} \cos(\theta) \)
+
+
+    **Geometrical Interpretation**
+
+    This transformation is a **translation** of the point \((x, y)\) by the vector:
+
+    $$
+    \vec{v} = 
+    \begin{bmatrix}
+    -\dfrac{3}{\ell} \sin(\theta) \\
+    \dfrac{3}{\ell} \cos(\theta)
+    \end{bmatrix} =
+    \begin{bmatrix}
+    \dfrac{3}{\ell} \cos(\theta + \dfrac{\pi}{2}) \\
+    \dfrac{3}{\ell} \sin(\theta + \dfrac{\pi}{2})
+    \end{bmatrix}
+    $$
+
+    - *Magnitude*: \( \dfrac{3}{\ell} \)
+    - *Direction*: Perpendicular to angle \( \theta \), i.e., in the direction \( \theta + \dfrac{\pi}{2} \)
+
+
+
+    *Visualizing the Transformation*
+
+    1. *Original Point*: Start from the point \( (x, y) \)
+    2. *Translation Vector*:
+       - Originates at \( (x, y) \)
+       - Has a length of \( \dfrac{3}{\ell} \)
+       - Points in direction \( \theta + \dfrac{\pi}{2} \)
+    3. *New Point*: The resulting point \( (x', y') \) is the endpoint of the vector starting at \( (x, y) \)
+    """
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
