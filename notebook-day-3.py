@@ -1736,7 +1736,6 @@ def _(mo):
     The vector \(\mathbf{h}\) represents the coordinates of a point located \(\ell\) / 3 above the base of the booster, aligned with its axis, in the global frame.
 
     This point can be used to control the position and orientation of the booster, as it is directly linked to both the translational motions \((x, y)\) and the rotational motion \(\theta\) of the vehicle.
-
     """
     )
     return
@@ -1912,6 +1911,79 @@ def _(mo):
     ## 🧩 Third and Fourth-Order Derivatives 
 
     Compute the third derivative $h^{(3)}$ of $h$ as a function of $\theta$ and $z$ (and constants) and then the fourth derivative $h^{(4)}$ of $h$ with respect to time as a function of $\theta$, $\dot{\theta}$, $z$, $\dot{z}$, $v$ (and constants) when the auxiliary system is on.
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    Given:
+
+    $$
+    \ddot{h} = 
+    \begin{bmatrix}
+    \ddot{h}_1 \\
+    \ddot{h}_2
+    \end{bmatrix}
+    = 
+    \begin{bmatrix}
+    -\frac{z}{M} \sin\theta \\
+    \frac{z}{M} \cos\theta - g
+    \end{bmatrix}
+    $$
+
+    $$
+    \dddot{h}_1 = -\frac{1}{M} \left( \dot{z} \sin\theta + z \cos\theta \cdot \dot{\theta} \right)
+    $$
+
+    $$
+    \dddot{h}_2 = \frac{1}{M} \left( \dot{z} \cos\theta - z \sin\theta \cdot \dot{\theta} \right)
+    $$
+
+    Therefore :
+
+    $$
+    \dddot{h} = 
+    \begin{bmatrix}
+    \dddot{h}_1 \\
+    \dddot{h}_2
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+    -\frac{1}{M} \left( \dot{z} \sin\theta + z \cos\theta \cdot \dot{\theta} \right) \\
+    \frac{1}{M} \left( \dot{z} \cos\theta - z \sin\theta \cdot \dot{\theta} \right)
+    \end{bmatrix}
+    $$
+    """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+
+
+    *Fourth derivative (with substitution \(\ddot{\theta} = -\dfrac{v_2}{z}\) and \(\ddot{z} = v_1\)) :*
+
+    \[
+    h^{(4)} =
+    \begin{bmatrix}
+    -\dfrac{1}{M} \left(
+    v_1 \sin\theta + 2 \dot{z} \cos\theta \cdot \dot{\theta}
+    - z \sin\theta \cdot \dot{\theta}^2 - \cos\theta \cdot v_2
+    \right) \\
+    \\
+    \phantom{-}\dfrac{1}{M} \left(
+    v_1 \cos\theta - 2 \dot{z} \sin\theta \cdot \dot{\theta}
+    - z \cos\theta \cdot \dot{\theta}^2 + \sin\theta \cdot v_2
+    \right)
+    \end{bmatrix}
+    \]
     """
     )
     return
