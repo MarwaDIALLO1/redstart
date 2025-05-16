@@ -2033,6 +2033,115 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    ### 1. Position \( h \)
+    The position \( h \) is given by:
+
+    $$
+    h = \begin{bmatrix} x - \frac{\ell}{3} \sin \theta \\ y + \frac{\ell}{3} \cos \theta \end{bmatrix}
+    $$
+
+    From this, we can express \( x \) and \( y \) as:
+
+    $$
+    x = h_x + \frac{\ell}{3} \sin \theta, \quad y = h_y - \frac{\ell}{3} \cos \theta
+    $$
+
+    ### 2. First Derivative \( \dot{h} \)
+    The first derivative \( \dot{h} \) is:
+
+    $$
+    \dot{h} = \begin{bmatrix} \dot{x} - \frac{\ell}{3} \cos \theta \dot{\theta} \\ \dot{y} - \frac{\ell}{3} \sin \theta \dot{\theta} \end{bmatrix}
+    $$
+
+    From this, we can express \( \dot{x} \) and \( \dot{y} \) as:
+
+    $$
+    \dot{x} = \dot{h}_x + \frac{\ell}{3} \cos \theta \dot{\theta}, \quad \dot{y} = \dot{h}_y + \frac{\ell}{3} \sin \theta \dot{\theta}
+    $$
+
+    ### 3. Second Derivative \( \ddot{h} \)
+    The second derivative \( \ddot{h} \) is:
+
+    $$
+    \ddot{h} = \frac{1}{M} \begin{bmatrix} \sin \theta \\ -\cos \theta \end{bmatrix} z - \begin{bmatrix} 0 \\ g \end{bmatrix}
+    $$
+
+    From the \( x \)-component:
+
+    $$
+    \ddot{h}_x = \frac{1}{M} \sin \theta z \implies z = \frac{M \ddot{h}_x}{\sin \theta}
+    $$
+
+    Since \( z < 0 \) and \( \sin\theta \) can be positive or negative,  \( \theta \) must be in a quadrant where \( \sin\theta \ne 0 \).
+
+    From the \( y \)-component:
+
+    $$
+    \ddot{h}_y = -\frac{1}{M} \cos \theta z - g \implies \cot \theta = -\frac{\ddot{h}_y + g}{\ddot{h}_x}
+    $$
+
+    Thus:
+
+    $$
+    \theta = \text{arccot}\left( -\frac{\ddot{h}_y + g}{\ddot{h}_x} \right)
+    $$
+
+    ### 4. Third Derivative \( h^{(3)} \)
+    The third derivative \( h^{(3)} \) is:
+
+    $$
+    h^{(3)} = \frac{1}{M} \begin{bmatrix} \cos \theta \\ \sin \theta \end{bmatrix} \dot{\theta} z + \frac{1}{M} \begin{bmatrix} \sin \theta \\ -\cos \theta \end{bmatrix} \dot{z}
+    $$
+
+    Solving for \( \dot{z} \) and \( \dot{\theta} \):
+
+    $$
+    \dot{z} = M (\sin \theta h^{(3)}_x - \cos \theta h^{(3)}_y)
+    $$
+
+    $$
+    \dot{\theta} = \frac{M (h^{(3)}_x \cos \theta + \sin \theta h^{(3)}_y)}{z}
+    $$
+
+ 
+    """
+    )
+    return
+
+
+@app.cell
+def _(np):
+    def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y, l=1.0, M=1.0, g=9.81):
+    
+        # Solve for theta
+        theta = np.arctan2(-d2h_x, d2h_y + g) 
+    
+        # Solve for z
+        sin_theta = np.sin(theta)
+        z = (M * d2h_x) / sin_theta
+    
+        # Solve for dot{z}
+        dz = M * (sin_theta * d3h_x - np.cos(theta) * d3h_y)
+    
+        # Solve for dot{theta}
+        dtheta = (M * (d3h_x * np.cos(theta) + sin_theta * d3h_y)) / z
+    
+        # Solve for x and y
+        x = h_x + (l/3) * sin_theta
+        y = h_y - (l/3) * np.cos(theta)
+    
+        # Solve for dx and dy
+        dx = dh_x + (l/3) * np.cos(theta) * dtheta
+        dy = dh_y + (l/3) * sin_theta * dtheta
+    
+        return x, dx, y, dy, theta, dtheta, z, dz
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(
