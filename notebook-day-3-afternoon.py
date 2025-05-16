@@ -2115,7 +2115,7 @@ def _(mo):
 
 @app.cell
 def _(np):
-    def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y, l=1.0, M=1.0, g=9.81):
+    def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y):
     
         # Solve for theta
         theta = np.arctan2(-d2h_x, d2h_y + g) 
