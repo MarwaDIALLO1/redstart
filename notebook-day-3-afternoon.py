@@ -2001,19 +2001,19 @@ def _(M, g, l, np):
         # Position h
         h_x = x - (l/3) * np.sin(theta)
         h_y = y + (l/3) * np.cos(theta)
-    
+
         # First derivative of h
         dh_x = dx - (l/3) * np.cos(theta) * dtheta
         dh_y = dy - (l/3) * np.sin(theta) * dtheta
-    
+
         # Second derivative of h
         d2h_x = (1/M) * np.sin(theta) * z 
         d2h_y = (1/M) * (-np.cos(theta)) * z - g
-    
+
         # Third derivative of h
         d3h_x = (1/M) * (np.cos(theta) * dtheta * z + np.sin(theta) * dz)
         d3h_y = (1/M) * (np.sin(theta) * dtheta * z - np.cos(theta) * dz)
-    
+
         return h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y
     return (T,)
 
@@ -2114,41 +2114,41 @@ def _(mo):
 @app.cell
 def _(M, g, l, np):
     def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y):
-    
+
         # Solve for theta
         theta = np.arctan2(-d2h_x, d2h_y + g) 
-    
+
         # Solve for z
         sin_theta = np.sin(theta)
         z = (M * d2h_x) / sin_theta
-    
+
         # Solve for dot{z}
         dz = M * (sin_theta * d3h_x - np.cos(theta) * d3h_y)
-    
+
         # Solve for dot{theta}
         dtheta = (M * (d3h_x * np.cos(theta) + sin_theta * d3h_y)) / z
-    
+
         # Solve for x and y
         x = h_x + (l/3) * sin_theta
         y = h_y - (l/3) * np.cos(theta)
-    
+
         # Solve for dx and dy
         dx = dh_x + (l/3) * np.cos(theta) * dtheta
         dy = dh_y + (l/3) * sin_theta * dtheta
-    
+
         return x, dx, y, dy, theta, dtheta, z, dz
     return (T_inv,)
 
 
 @app.cell
-def _(M, T, T_inv, g, l, np):
+def _(T, T_inv, np):
     h_x01, h_y01 = 0.5, 1.0
     dh_x01, dh_y01 = 0.2, -0.1
     d2h_x01, d2h_y01 = 3.0, -5.0
     d3h_x01, d3h_y01 = -1.0, 0.5
 
     # On applique T_inv
-    x1, dx1, y1, dy1, theta1, dtheta1, z1, dz1 = T_inv(h_x01, h_y01, dh_x01, dh_y01, d2h_x01, d2h_y01, d3h_x01, d3h_y01, M, l, g)
+    x1, dx1, y1, dy1, theta1, dtheta1, z1, dz1 = T_inv(h_x01, h_y01, dh_x01, dh_y01, d2h_x01, d2h_y01, d3h_x01, d3h_y01)
 
     # Puis on applique T
     h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1 = T(x1, dx1, y1, dy1, theta1, dtheta1, z1, dz1)
@@ -2204,75 +2204,78 @@ def _(mo):
 
 
 @app.cell
-def _(M, T, l, np):
+def _(np):
     from scipy.interpolate import CubicSpline
 
-    def compute(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
-                x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf, tf):
-    
-        # Interpolation des états avec splines cubiques
-        splines = {
-            'x': CubicSpline([0, tf], [x_0, x_tf], bc_type=((1, dx_0), (1, dx_tf))),
-            'y': CubicSpline([0, tf], [y_0, y_tf], bc_type=((1, dy_0), (1, dy_tf))),
-            'theta': CubicSpline([0, tf], [theta_0, theta_tf], bc_type=((1, dtheta_0), (1, dtheta_tf))),
-            'z': CubicSpline([0, tf], [z_0, z_tf], bc_type=((1, dz_0), (1, dz_tf)))
-        }
+    def compute(
+        x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
+        x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf, tf
+    ):
+        # Appel de T pour obtenir les états initiaux dans l'espace h
+        from T import T  # Remplacez par votre fonction T
+        from T_inv import T_inv  # Et aussi T_inv
+
+        h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0 = T(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0)
+        h_xf, h_yf, dh_xf, dh_yf, d2h_xf, d2h_yf, d3h_xf, d3h_yf = T(x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf)
+
+        # Interpolation cubique avec conditions aux limites sur h, ḣ, ḧ, ḧ̇
+        h_x_spline = CubicSpline([0, tf], [h_x0, h_xf], bc_type=((2, d2h_x0), (2, d2h_xf)))
+        h_y_spline = CubicSpline([0, tf], [h_y0, h_yf], bc_type=((2, d2h_y0), (2, d2h_yf)))
 
         def fun(t):
-            # États interpolés
-            x = splines['x'](t)
-            dx = splines['x'].derivative(1)(t)
-            y = splines['y'](t)
-            dy = splines['y'].derivative(1)(t)
-            theta = splines['theta'](t)
-            dtheta = splines['theta'].derivative(1)(t)
-            z = splines['z'](t)
-            dz = splines['z'].derivative(1)(t)
-        
-            # Calcul des termes dynamiques (remplacez T par votre vraie fonction)
-            # Hypothèse: T retourne un array où les éléments 6 et 7 sont dh3_x et dh3_y
-            H = T(x, dx, y, dy, theta, dtheta, z, dz)
-            dh3_x = H[6]
-            dh3_y = H[7]
-        
-            # Dérivées temporelles
-            dh4_x = (T(x + 1e-6, dx, y, dy, theta, dtheta, z, dz)[6] - dh3_x) / 1e-6  # Approximation numérique
-            dh4_y = (T(x, dx, y + 1e-6, dy, theta, dtheta, z, dz)[7] - dh3_y) / 1e-6
-        
-            u = np.array([dh4_x, dh4_y])
-        
-            # Matrice de rotation R(π/2 - θ)
-            angle_1 = np.pi/2 - theta
+            # Calcul de h(t) et ses dérivées
+            h_x = h_x_spline(t)
+            h_y = h_y_spline(t)
+            dh_x = h_x_spline.derivative(1)(t)
+            dh_y = h_y_spline.derivative(1)(t)
+            d2h_x = h_x_spline.derivative(2)(t)
+            d2h_y = h_y_spline.derivative(2)(t)
+            d3h_x = h_x_spline.derivative(3)(t)
+            d3h_y = h_y_spline.derivative(3)(t)
+
+            # Revenir à l'état physique via T_inv
+            x, dx, y, dy, theta, dtheta, z, dz = T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y)
+
+            # Calcul de la commande f, phi à partir de l'état reconstruit
+            # Matrice de rotation R(pi/2 - theta)
+            angle_pi_half = np.pi / 2 - theta
             R = np.array([
-                [np.cos(angle_1), -np.sin(angle_1)],
-                [np.sin(angle_1),  np.cos(angle_1)]
+                [np.cos(angle_pi_half), -np.sin(angle_pi_half)],
+                [np.sin(angle_pi_half), np.cos(angle_pi_half)]
             ])
-        
+
             # Terme dynamique
             dynamic_term = np.array([
                 dtheta**2 * z,
                 -2 * dtheta * dz
             ])
-        
-            # Calcul final de v
-            v = M * R @ u + dynamic_term
-        
-            # Calcul de f_x et f_y
-            angle_2 = theta - np.pi/2
-            rotation_matrix_2 = np.array([
-                [np.cos(angle_2), -np.sin(angle_2)],
-                [np.sin(angle_2),  np.cos(angle_2)]
-            ])
-        
-            term_1 = z - (M * l*2 * dtheta*2) / 3
-            term_2 = z - (M * l * v[1]**2) / (3 * z)
-            fx_fy = rotation_matrix_2 @ np.array([term_1, term_2])  
-        
-            f = np.sqrt(fx_fy[0]*2 + fx_fy[1]*2)  # Norme de la force
-            phi = np.arctan2(fx_fy[1], fx_fy[0])     # Angle de la force
 
-            return [x, dx, y, dy, theta, dtheta, z, dz, f, phi]
- 
+            # Commande u = h^(4)
+            d4h_x = h_x_spline.derivative(4)(t)
+            d4h_y = h_y_spline.derivative(4)(t)
+            u = np.array([d4h_x, d4h_y])
+
+            # Calcul de v
+            M = 1.0  # Remplacer par le bon M
+            v = M * R @ u + dynamic_term
+
+            # Angle de rotation Theta - pi/2
+            angle_theta_phi = theta - np.pi / 2
+            R2 = np.array([
+                [np.cos(angle_theta_phi), -np.sin(angle_theta_phi)],
+                [np.sin(angle_theta_phi), np.cos(angle_theta_phi)]
+            ])
+
+            # Termes de commande finale
+            term1 = z - (M * 1 * dtheta**2) / 3
+            term2 = (M * 1 * v[1]) / (3 * z) if z != 0 else 0.0
+
+            fx_fy = R2 @ np.array([term1, term2])
+            f = np.linalg.norm(fx_fy)
+            phi = np.arctan2(fx_fy[1], fx_fy[0]) - angle_theta_phi
+
+            return (x, dx, y, dy, theta, dtheta, z, dz, f, phi)
+
         return fun
     return (compute,)
 
@@ -2335,7 +2338,7 @@ def _(M, g, l, np):
 def _(np, plt):
     def plot_trajectory(fun, tf=10.0):
         t = np.linspace(0, tf, 500)
-    
+
         # Récupération des valeurs à chaque instant
         x_list, dx_list = [], []
         y_list, dy_list = [], []
@@ -2414,8 +2417,8 @@ def _(FFMpegWriter, FuncAnimation, draw_booster, l, np, plt, tqdm):
             t = t_vals[frame]
             x, dx, y, dy, theta, dtheta, z, dz, f, phi = fun(t)
             draw_booster(x=x, y=y, theta=theta, f=f, phi=phi, axes=ax)
-            ax.set_xlim(-4*l, 4*l)
-            ax.set_ylim(-2*l, 24*l)
+            ax.set_xlim(-6*l, 6*l)
+            ax.set_ylim(-3*l, 30*l)
             ax.set_aspect("equal")
             ax.grid(True)
             ax.set_title(f"Temps: {t:.2f}s")
@@ -2467,8 +2470,8 @@ def _(
 
 
 @app.cell
-def _(booster_landing, images, mo, public):
-    mo.video(src=public/images/booster_landing.mp4)
+def _(mo):
+    mo.video(src="booster_landing.mp4")
     return
 
 
