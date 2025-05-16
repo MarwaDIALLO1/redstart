@@ -2106,8 +2106,6 @@ def _(mo):
     $$
     \dot{\theta} = \frac{M (h^{(3)}_x \cos \theta + \sin \theta h^{(3)}_y)}{z}
     $$
-
- 
     """
     )
     return
@@ -2144,24 +2142,24 @@ def _(M, g, l, np):
 
 @app.cell
 def _(M, T, T_inv, g, l, np):
-    h_x0, h_y0 = 0.5, 1.0
-    dh_x0, dh_y0 = 0.2, -0.1
-    d2h_x0, d2h_y0 = 3.0, -5.0
-    d3h_x0, d3h_y0 = -1.0, 0.5
+    h_x01, h_y01 = 0.5, 1.0
+    dh_x01, dh_y01 = 0.2, -0.1
+    d2h_x01, d2h_y01 = 3.0, -5.0
+    d3h_x01, d3h_y01 = -1.0, 0.5
 
     # On applique T_inv
-    x, dx, y, dy, theta, dtheta, z, dz = T_inv(h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0, M, l, g)
+    x1, dx1, y1, dy1, theta1, dtheta1, z1, dz1 = T_inv(h_x01, h_y01, dh_x01, dh_y01, d2h_x01, d2h_y01, d3h_x01, d3h_y01, M, l, g)
 
     # Puis on applique T
-    h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1 = T(x, dx, y, dy, theta, dtheta, z, dz)
+    h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1 = T(x1, dx1, y1, dy1, theta1, dtheta1, z1, dz1)
 
     # Affichage des résultats
-    print("Original : ", np.round([h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0], 5))
+    print("Original : ", np.round([h_x01, h_y01, dh_x01, dh_y01, d2h_x01, d2h_y01, d3h_x01, d3h_y01], 5))
     print("After T ∘ T_inv : ", np.round([h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1], 5))
 
     # Erreur absolue
     error = np.abs(np.array([h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1]) - 
-                   np.array([h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0]))
+                   np.array([h_x01, h_y01, dh_x01, dh_y01, d2h_x01, d2h_y01, d3h_x01, d3h_y01]))
 
     print("Erreur absolue : ", np.round(error, 5))
     return
@@ -2206,8 +2204,77 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
+def _(M, T, l, np):
+    from scipy.interpolate import CubicSpline
+
+    def compute(x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
+                x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf, tf):
+    
+        # Interpolation des états avec splines cubiques
+        splines = {
+            'x': CubicSpline([0, tf], [x_0, x_tf], bc_type=((1, dx_0), (1, dx_tf))),
+            'y': CubicSpline([0, tf], [y_0, y_tf], bc_type=((1, dy_0), (1, dy_tf))),
+            'theta': CubicSpline([0, tf], [theta_0, theta_tf], bc_type=((1, dtheta_0), (1, dtheta_tf))),
+            'z': CubicSpline([0, tf], [z_0, z_tf], bc_type=((1, dz_0), (1, dz_tf)))
+        }
+
+        def fun(t):
+            # États interpolés
+            x = splines['x'](t)
+            dx = splines['x'].derivative(1)(t)
+            y = splines['y'](t)
+            dy = splines['y'].derivative(1)(t)
+            theta = splines['theta'](t)
+            dtheta = splines['theta'].derivative(1)(t)
+            z = splines['z'](t)
+            dz = splines['z'].derivative(1)(t)
+        
+            # Calcul des termes dynamiques (remplacez T par votre vraie fonction)
+            # Hypothèse: T retourne un array où les éléments 6 et 7 sont dh3_x et dh3_y
+            H = T(x, dx, y, dy, theta, dtheta, z, dz)
+            dh3_x = H[6]
+            dh3_y = H[7]
+        
+            # Dérivées temporelles
+            dh4_x = (T(x + 1e-6, dx, y, dy, theta, dtheta, z, dz)[6] - dh3_x) / 1e-6  # Approximation numérique
+            dh4_y = (T(x, dx, y + 1e-6, dy, theta, dtheta, z, dz)[7] - dh3_y) / 1e-6
+        
+            u = np.array([dh4_x, dh4_y])
+        
+            # Matrice de rotation R(π/2 - θ)
+            angle_1 = np.pi/2 - theta
+            R = np.array([
+                [np.cos(angle_1), -np.sin(angle_1)],
+                [np.sin(angle_1),  np.cos(angle_1)]
+            ])
+        
+            # Terme dynamique
+            dynamic_term = np.array([
+                dtheta**2 * z,
+                -2 * dtheta * dz
+            ])
+        
+            # Calcul final de v
+            v = M * R @ u + dynamic_term
+        
+            # Calcul de f_x et f_y
+            angle_2 = theta - np.pi/2
+            rotation_matrix_2 = np.array([
+                [np.cos(angle_2), -np.sin(angle_2)],
+                [np.sin(angle_2),  np.cos(angle_2)]
+            ])
+        
+            term_1 = z - (M * l*2 * dtheta*2) / 3
+            term_2 = z - (M * l * v[1]**2) / (3 * z)
+            fx_fy = rotation_matrix_2 @ np.array([term_1, term_2])  
+        
+            f = np.sqrt(fx_fy[0]*2 + fx_fy[1]*2)  # Norme de la force
+            phi = np.arctan2(fx_fy[1], fx_fy[0])     # Angle de la force
+
+            return [x, dx, y, dy, theta, dtheta, z, dz, f, phi]
+ 
+        return fun
+    return (compute,)
 
 
 @app.cell(hide_code=True)
@@ -2225,6 +2292,183 @@ def _(mo):
     Make the graph of the relevant variables as a function of time, then make a video out of the same result. Comment and iterate if necessary!
     """
     )
+    return
+
+
+@app.cell
+def _(M, g, l, np):
+    x_0, dx_0 = 5.0, 0.0
+    y_0, dy_0 = 20.0, -1.0
+    theta_0, dtheta_0 = -np.pi/8, 0.0
+    z_0, dz_0 = -M*g, 0.0
+
+    # État final
+    x_tf, dx_tf = 0.0, 0.0
+    y_tf, dy_tf = 4/3 * l, 0.0
+    theta_tf, dtheta_tf = 0.0, 0.0
+    z_tf, dz_tf = -M*g, 0.0
+
+    # Temps final
+    tf = 10.0
+    return (
+        dtheta_0,
+        dtheta_tf,
+        dx_0,
+        dx_tf,
+        dy_0,
+        dy_tf,
+        dz_0,
+        dz_tf,
+        tf,
+        theta_0,
+        theta_tf,
+        x_0,
+        x_tf,
+        y_0,
+        y_tf,
+        z_0,
+        z_tf,
+    )
+
+
+@app.cell
+def _(np, plt):
+    def plot_trajectory(fun, tf=10.0):
+        t = np.linspace(0, tf, 500)
+    
+        # Récupération des valeurs à chaque instant
+        x_list, dx_list = [], []
+        y_list, dy_list = [], []
+        theta_list, dtheta_list = [], []
+        z_list, dz_list = [], []
+        f_list, phi_list = [], []
+
+        for time in t:
+            x, dx, y, dy, theta, dtheta, z, dz, f, phi = fun(time)
+            x_list.append(x)
+            dx_list.append(dx)
+            y_list.append(y)
+            dy_list.append(dy)
+            theta_list.append(theta)
+            dtheta_list.append(dtheta)
+            z_list.append(z)
+            dz_list.append(dz)
+            f_list.append(f)
+            phi_list.append(phi)
+
+        # Tracé
+        fig, axs = plt.subplots(3, 3, figsize=(16, 10))
+        fig.suptitle("Évolution temporelle de la trajectoire", fontsize=16)
+
+        axs[0, 0].plot(t, x_list, label="x(t)")
+        axs[0, 0].set_title("Position x(t)")
+        axs[0, 0].grid(True)
+
+        axs[0, 1].plot(t, y_list, label="y(t)", color='orange')
+        axs[0, 1].set_title("Position y(t)")
+        axs[0, 1].grid(True)
+
+        axs[0, 2].plot(t, theta_list, label="θ(t)", color='green')
+        axs[0, 2].set_title("Angle θ(t)")
+        axs[0, 2].grid(True)
+
+        axs[1, 0].plot(t, dx_list, label="dx(t)")
+        axs[1, 0].set_title("Vitesse dx(t)")
+        axs[1, 0].grid(True)
+
+        axs[1, 1].plot(t, dy_list, label="dy(t)", color='orange')
+        axs[1, 1].set_title("Vitesse dy(t)")
+        axs[1, 1].grid(True)
+
+        axs[1, 2].plot(t, dtheta_list, label="dθ(t)", color='green')
+        axs[1, 2].set_title("Vitesse angulaire dθ(t)")
+        axs[1, 2].grid(True)
+
+        axs[2, 0].plot(t, z_list, label="z(t)", color='purple')
+        axs[2, 0].set_title("Variable z(t)")
+        axs[2, 0].grid(True)
+
+        axs[2, 1].plot(t, f_list, label="f(t)", color='red')
+        axs[2, 1].set_title("Force f(t)")
+        axs[2, 1].grid(True)
+
+        axs[2, 2].plot(t, phi_list, label="φ(t)", color='brown')
+        axs[2, 2].set_title("Angle φ(t)")
+        axs[2, 2].grid(True)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+    return (plot_trajectory,)
+
+
+@app.cell
+def _(FFMpegWriter, FuncAnimation, draw_booster, l, np, plt, tqdm):
+    def make_videoo(fun, tf=10.0, filename="booster_landing.mp4"):
+        fig, ax = plt.subplots(figsize=(10, 8))
+        num_frames = 300
+        fps = 30
+        t_vals = np.linspace(0, tf, num_frames)
+
+        def update(frame):
+            ax.clear()
+            t = t_vals[frame]
+            x, dx, y, dy, theta, dtheta, z, dz, f, phi = fun(t)
+            draw_booster(x=x, y=y, theta=theta, f=f, phi=phi, axes=ax)
+            ax.set_xlim(-4*l, 4*l)
+            ax.set_ylim(-2*l, 24*l)
+            ax.set_aspect("equal")
+            ax.grid(True)
+            ax.set_title(f"Temps: {t:.2f}s")
+
+        pbar = tqdm(total=num_frames, desc="Génération de la vidéo")
+        ani = FuncAnimation(fig, update, frames=num_frames, interval=1000/fps)
+        writer = FFMpegWriter(fps=fps)
+        ani.save(filename, writer=writer)
+        pbar.close()
+        print(f"Vidéo sauvegardée sous {filename}")
+    return (make_videoo,)
+
+
+@app.cell
+def _(
+    compute,
+    dtheta_0,
+    dtheta_tf,
+    dx_0,
+    dx_tf,
+    dy_0,
+    dy_tf,
+    dz_0,
+    dz_tf,
+    make_videoo,
+    plot_trajectory,
+    tf,
+    theta_0,
+    theta_tf,
+    x_0,
+    x_tf,
+    y_0,
+    y_tf,
+    z_0,
+    z_tf,
+):
+    fun = compute(
+        x_0, dx_0, y_0, dy_0, theta_0, dtheta_0, z_0, dz_0,
+        x_tf, dx_tf, y_tf, dy_tf, theta_tf, dtheta_tf, z_tf, dz_tf,
+        tf
+    )
+
+    # Affichage des graphiques
+    plot_trajectory(fun, tf)
+
+    # Génération de la vidéo
+    make_videoo(fun, tf=tf)
+    return
+
+
+@app.cell
+def _(booster_landing, images, mo, public):
+    mo.video(src=public/images/booster_landing.mp4)
     return
 
 
