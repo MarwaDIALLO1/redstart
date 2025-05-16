@@ -2015,7 +2015,7 @@ def _(M, g, l, np):
         d3h_y = (1/M) * (np.sin(theta) * dtheta * z - np.cos(theta) * dz)
     
         return h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y
-    return
+    return (T,)
 
 
 @app.cell(hide_code=True)
@@ -2114,7 +2114,7 @@ def _(mo):
 
 
 @app.cell
-def _(np):
+def _(M, g, l, np):
     def T_inv(h_x, h_y, dh_x, dh_y, d2h_x, d2h_y, d3h_x, d3h_y):
     
         # Solve for theta
@@ -2139,6 +2139,31 @@ def _(np):
         dy = dh_y + (l/3) * sin_theta * dtheta
     
         return x, dx, y, dy, theta, dtheta, z, dz
+    return (T_inv,)
+
+
+@app.cell
+def _(M, T, T_inv, g, l, np):
+    h_x0, h_y0 = 0.5, 1.0
+    dh_x0, dh_y0 = 0.2, -0.1
+    d2h_x0, d2h_y0 = 3.0, -5.0
+    d3h_x0, d3h_y0 = -1.0, 0.5
+
+    # On applique T_inv
+    x, dx, y, dy, theta, dtheta, z, dz = T_inv(h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0, M, l, g)
+
+    # Puis on applique T
+    h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1 = T(x, dx, y, dy, theta, dtheta, z, dz)
+
+    # Affichage des résultats
+    print("Original : ", np.round([h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0], 5))
+    print("After T ∘ T_inv : ", np.round([h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1], 5))
+
+    # Erreur absolue
+    error = np.abs(np.array([h_x1, h_y1, dh_x1, dh_y1, d2h_x1, d2h_y1, d3h_x1, d3h_y1]) - 
+                   np.array([h_x0, h_y0, dh_x0, dh_y0, d2h_x0, d2h_y0, d3h_x0, d3h_y0]))
+
+    print("Erreur absolue : ", np.round(error, 5))
     return
 
 
@@ -2177,6 +2202,11 @@ def _(mo):
     that returns a function `fun` such that `fun(t)` is a value of `x, dx, y, dy, theta, dtheta, z, dz, f, phi` at time `t` that match the initial and final values provided as arguments to `compute`.
     """
     )
+    return
+
+
+@app.cell
+def _():
     return
 
 
